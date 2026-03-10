@@ -1,0 +1,10 @@
+[
+    {
+        "merged": "com.tiltsteering.receiver.app-merged_res-31:/xml_accessibility_service_config.xml.flat",
+        "source": "com.tiltsteering.receiver.app-main-33:/xml/accessibility_service_config.xml"
+    },
+    {
+        "merged": "com.tiltsteering.receiver.app-merged_res-31:/layout_activity_main.xml.flat",
+        "source": "com.tiltsteering.receiver.app-main-33:/layout/activity_main.xml"
+    }
+]

@@ -1,0 +1,9 @@
+R_DEF: Internal format may change without notice
+local
+id btnAccessibility
+id btnStart
+id btnStop
+id tvStatus
+layout activity_main
+string app_name
+xml accessibility_service_config
