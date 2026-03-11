@@ -75,7 +75,7 @@ class GamepadService : Service() {
         "Tilt Gamepad",
         "Tilt Steering Controller",
         "Mrb Controller",
-        BluetoothHidDevice.SUBCLASS1_GAMEPAD,
+        0x08.toByte(),
         hidDescriptor
     )
 
