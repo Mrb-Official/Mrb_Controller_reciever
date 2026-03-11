@@ -9,12 +9,12 @@ import kotlin.math.abs
 class SteeringAccessibilityService : AccessibilityService() {
     companion object {
         var instance: SteeringAccessibilityService? = null
-        var LEFT_X  = 150f
-        var LEFT_Y  = 900f
-        var RIGHT_X = 900f
-        var RIGHT_Y = 900f
-        var ACCEL_X = 1000f
-        var ACCEL_Y = 800f
+        const val LEFT_X  = 170f
+        const val LEFT_Y  = 2150f
+        const val RIGHT_X = 390f
+        const val RIGHT_Y = 2150f
+        const val ACCEL_X = 980f
+        const val ACCEL_Y = 2100f
         const val DEADZONE = 2.0f
         const val THRESHOLD = 0.3f
         const val HOLD_MS = 500L
@@ -26,9 +26,9 @@ class SteeringAccessibilityService : AccessibilityService() {
     private var busy = false
 
     fun testTouch() {
-        val screenWidth = resources.displayMetrics.widthPixels.toFloat()
-        val screenHeight = resources.displayMetrics.heightPixels.toFloat()
-        hold(screenWidth / 2, screenHeight / 2)
+        val w = resources.displayMetrics.widthPixels.toFloat()
+        val h = resources.displayMetrics.heightPixels.toFloat()
+        hold(w / 2, h / 2)
     }
 
     fun handleTilt(tilt: Float) {
@@ -54,16 +54,13 @@ class SteeringAccessibilityService : AccessibilityService() {
 
     private fun hold(x: Float, y: Float) {
         if (busy) return
-
-        // Press karo
-        val pressPath = Path().apply { moveTo(x, y) }
-        val press = GestureDescription.StrokeDescription(
-            pressPath, 0, HOLD_MS, true
+        val stroke = GestureDescription.StrokeDescription(
+            Path().apply { moveTo(x, y) },
+            0, HOLD_MS, true
         )
-
         busy = true
         dispatchGesture(
-            GestureDescription.Builder().addStroke(press).build(),
+            GestureDescription.Builder().addStroke(stroke).build(),
             object : GestureResultCallback() {
                 override fun onCompleted(g: GestureDescription) {
                     busy = false
