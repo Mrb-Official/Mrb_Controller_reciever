@@ -9,12 +9,12 @@ import kotlin.math.abs
 class SteeringAccessibilityService : AccessibilityService() {
     companion object {
         var instance: SteeringAccessibilityService? = null
-        const val LEFT_X  = 170f
-        const val LEFT_Y  = 2150f
+        const val LEFT_X  = 229f
+        const val LEFT_Y  = 703f
         const val RIGHT_X = 390f
-        const val RIGHT_Y = 2150f
+        const val RIGHT_Y = 749f
         const val ACCEL_X = 980f
-        const val ACCEL_Y = 2100f
+        const val ACCEL_Y = 500f
         const val DEADZONE = 2.0f
         const val THRESHOLD = 0.3f
         const val HOLD_MS = 500L
