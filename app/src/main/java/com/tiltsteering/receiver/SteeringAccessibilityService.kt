@@ -4,7 +4,6 @@ import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.view.accessibility.AccessibilityEvent
-import kotlin.math.abs
 
 class SteeringAccessibilityService : AccessibilityService() {
     companion object {
@@ -19,7 +18,7 @@ class SteeringAccessibilityService : AccessibilityService() {
     }
 
     private var lastDir = 0
-    private var steeringGestureActive = false
+    private var steeringActive = false
     private var accelHeld = false
 
     fun testTouch() { startSteering(-1) }
@@ -34,8 +33,8 @@ class SteeringAccessibilityService : AccessibilityService() {
         lastDir = dir
         when (dir) {
             -1 -> startSteering(-1)
-            1  -> startSteering(1)
-            0  -> stopSteering()
+             1 -> startSteering(1)
+             0 -> steeringActive = false
         }
     }
 
@@ -46,47 +45,40 @@ class SteeringAccessibilityService : AccessibilityService() {
     }
 
     private fun startSteering(dir: Int) {
-        steeringGestureActive = true
+        steeringActive = true
         val x = if (dir == -1) LEFT_X else RIGHT_X
         val y = if (dir == -1) LEFT_Y else RIGHT_Y
         continuousHold(x, y, dir)
     }
 
-    private fun stopSteering() {
-        steeringGestureActive = false
-    }
-
     private fun continuousHold(x: Float, y: Float, dir: Int) {
-        if (!steeringGestureActive || lastDir != dir) return
-
-        // 2000ms lamba hold — game ke liye perfect
+        if (!steeringActive || lastDir != dir) return
         val stroke = GestureDescription.StrokeDescription(
             Path().apply { moveTo(x, y) },
-            0, 2000L
+            0L, 2000L
         )
-
         dispatchGesture(
             GestureDescription.Builder().addStroke(stroke).build(),
             object : GestureResultCallback() {
-                override fun onCompleted(g: GestureDescription) {
-                    // Agar abhi bhi same direction — repeat karo
-                    if (steeringGestureActive && lastDir == dir) {
+                override fun onCompleted(gestureDescription: GestureDescription) {
+                    if (steeringActive && lastDir == dir) {
                         continuousHold(x, y, dir)
                     }
                 }
-                override fun onCancelled(g: GestureDescription) {
-                    if (steeringGestureActive && lastDir == dir) {
+                override fun onCancelled(gestureDescription: GestureDescription) {
+                    if (steeringActive && lastDir == dir) {
                         continuousHold(x, y, dir)
                     }
                 }
-            }, null
+            },
+            null
         )
     }
 
     private fun tapAccel() {
         val stroke = GestureDescription.StrokeDescription(
             Path().apply { moveTo(ACCEL_X, ACCEL_Y) },
-            0, 100L
+            0L, 100L
         )
         dispatchGesture(
             GestureDescription.Builder().addStroke(stroke).build(),
@@ -96,6 +88,6 @@ class SteeringAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() { instance = this }
     override fun onInterrupt() {}
-    override fun onAccessibilityEvent(e: AccessibilityEvent?) {}
+    override fun onAccessibilityEvent(event: AccessibilityEvent) {}
     override fun onDestroy() { instance = null; super.onDestroy() }
 }
