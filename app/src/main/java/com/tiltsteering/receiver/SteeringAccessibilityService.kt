@@ -3,6 +3,8 @@ package com.tiltsteering.receiver
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
+import android.os.Handler
+import android.os.Looper
 import android.view.accessibility.AccessibilityEvent
 
 class SteeringAccessibilityService : AccessibilityService() {
@@ -20,6 +22,7 @@ class SteeringAccessibilityService : AccessibilityService() {
     private var lastDir = 0
     private var steeringActive = false
     private var accelHeld = false
+    private val handler = Handler(Looper.getMainLooper())
 
     fun testTouch() { startSteering(-1) }
 
@@ -57,21 +60,22 @@ class SteeringAccessibilityService : AccessibilityService() {
             Path().apply { moveTo(x, y) },
             0L, 2000L
         )
+        val callback = object : GestureResultCallback() {
+            override fun onCompleted(gestureDescription: GestureDescription) {
+                if (steeringActive && lastDir == dir) {
+                    handler.post { continuousHold(x, y, dir) }
+                }
+            }
+            override fun onCancelled(gestureDescription: GestureDescription) {
+                if (steeringActive && lastDir == dir) {
+                    handler.post { continuousHold(x, y, dir) }
+                }
+            }
+        }
         dispatchGesture(
             GestureDescription.Builder().addStroke(stroke).build(),
-            object : GestureResultCallback() {
-                override fun onCompleted(gestureDescription: GestureDescription) {
-                    if (steeringActive && lastDir == dir) {
-                        continuousHold(x, y, dir)
-                    }
-                }
-                override fun onCancelled(gestureDescription: GestureDescription) {
-                    if (steeringActive && lastDir == dir) {
-                        continuousHold(x, y, dir)
-                    }
-                }
-            },
-            null
+            callback,
+            handler
         )
     }
 
@@ -80,9 +84,14 @@ class SteeringAccessibilityService : AccessibilityService() {
             Path().apply { moveTo(ACCEL_X, ACCEL_Y) },
             0L, 100L
         )
+        val callback = object : GestureResultCallback() {
+            override fun onCompleted(gestureDescription: GestureDescription) {}
+            override fun onCancelled(gestureDescription: GestureDescription) {}
+        }
         dispatchGesture(
             GestureDescription.Builder().addStroke(stroke).build(),
-            null
+            callback,
+            handler
         )
     }
 
