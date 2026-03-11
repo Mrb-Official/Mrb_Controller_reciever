@@ -6,26 +6,21 @@
     android:padding="24dp"
     android:gravity="center">
 
-    <TextView android:text="🏎️ TILT RECEIVER"
-        android:textSize="22sp" android:textStyle="bold"
+    <TextView android:text="🎮 TILT GAMEPAD"
+        android:textSize="24sp"
+        android:textStyle="bold"
         android:layout_marginBottom="32dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 
-    <Button android:id="@+id/btnAccessibility"
-        android:text="1. Enable Accessibility Service"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"/>
-
     <Button android:id="@+id/btnStart"
-        android:text="2. Start UDP Listener"
+        android:text="START GAMEPAD"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="12dp"/>
 
     <Button android:id="@+id/btnStop"
-        android:text="Stop"
+        android:text="STOP"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="24dp"/>
@@ -33,31 +28,13 @@
     <TextView android:id="@+id/tvStatus"
         android:text="Ready..."
         android:textSize="16sp"
+        android:layout_marginBottom="16dp"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="16dp"/>
+        android:layout_height="wrap_content"/>
 
     <TextView android:id="@+id/tvData"
-        android:text="Data: Waiting..."
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:textColor="#FF0000"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"/>
-
-    <TextView android:id="@+id/tvTilt"
-        android:text="Tilt: 0.0"
-        android:textSize="18sp"
-        android:textColor="#0000FF"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginBottom="8dp"/>
-
-    <TextView android:id="@+id/tvRace"
-        android:text="Gas: OFF"
-        android:textSize="18sp"
-        android:textColor="#008000"
+        android:text="Waiting for data..."
+        android:textSize="16sp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 
