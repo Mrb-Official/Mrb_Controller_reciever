@@ -9,21 +9,30 @@ import kotlin.math.abs
 class SteeringAccessibilityService : AccessibilityService() {
     companion object {
         var instance: SteeringAccessibilityService? = null
-        const val LEFT_X  = 180f
-        const val LEFT_Y  = 391f
-        const val RIGHT_X = 540f
-        const val RIGHT_Y = 391f
-        const val ACCEL_X = 620f
-        const val ACCEL_Y = 391f
+        var LEFT_X  = 150f
+        var LEFT_Y  = 900f
+        var RIGHT_X = 900f
+        var RIGHT_Y = 900f
+        var ACCEL_X = 1000f
+        var ACCEL_Y = 800f
         const val DEADZONE = 2.0f
         const val THRESHOLD = 0.3f
-        const val HOLD_MS = 50L
+        const val HOLD_MS = 100L
     }
 
     private var lastDir = 0
     private var lastTilt = 0f
     private var accelHeld = false
     private var busy = false
+
+    // Test function - screen center pe touch karo
+    fun testTouch() {
+        val screenWidth = resources.displayMetrics.widthPixels.toFloat()
+        val screenHeight = resources.displayMetrics.heightPixels.toFloat()
+        val centerX = screenWidth / 2
+        val centerY = screenHeight / 2
+        hold(centerX, centerY)
+    }
 
     fun handleTilt(tilt: Float) {
         val dir = when {
@@ -50,9 +59,7 @@ class SteeringAccessibilityService : AccessibilityService() {
         if (busy) return
         val stroke = GestureDescription.StrokeDescription(
             Path().apply { moveTo(x, y) },
-            0,
-            HOLD_MS,
-            true
+            0, HOLD_MS, true
         )
         busy = true
         dispatchGesture(
@@ -68,8 +75,7 @@ class SteeringAccessibilityService : AccessibilityService() {
                 override fun onCancelled(g: GestureDescription) {
                     busy = false
                 }
-            },
-            null
+            }, null
         )
     }
 

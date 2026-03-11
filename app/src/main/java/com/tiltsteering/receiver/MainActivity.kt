@@ -15,13 +15,23 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnAccessibility).setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
+
         findViewById<Button>(R.id.btnStart).setOnClickListener {
-            startForegroundService(Intent(this, UdpListenerService::class.java))
-            findViewById<TextView>(R.id.tvStatus).text = "✅ UDP Listener Running on Port 9876"
+            // Test touch - screen center pe tap karo
+            val svc = SteeringAccessibilityService.instance
+            if (svc != null) {
+                svc.testTouch()
+                findViewById<TextView>(R.id.tvStatus).text = 
+                    "Touch test bheja! Kuch hua?"
+            } else {
+                findViewById<TextView>(R.id.tvStatus).text = 
+                    "Accessibility Service OFF hai!"
+            }
         }
+
         findViewById<Button>(R.id.btnStop).setOnClickListener {
             stopService(Intent(this, UdpListenerService::class.java))
-            findViewById<TextView>(R.id.tvStatus).text = "⛔ Stopped"
+            findViewById<TextView>(R.id.tvStatus).text = "Stopped"
         }
     }
 }
