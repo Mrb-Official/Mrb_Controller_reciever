@@ -3,21 +3,31 @@
     <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE"/>
-    <application android:label="TiltReceiver" android:theme="@style/Theme.AppCompat.Light">
-        <activity android:name=".MainActivity" android:exported="true">
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <application
+        android:label="TiltReceiver"
+        android:theme="@style/Theme.AppCompat.Light">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-        <service android:name=".UdpListenerService"
-            android:foregroundServiceType="connectedDevice" android:exported="false"/>
-        <service android:name=".SteeringAccessibilityService"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" android:exported="true">
+        <service
+            android:name=".UdpListenerService"
+            android:foregroundServiceType="connectedDevice"
+            android:exported="false"/>
+        <service
+            android:name=".SteeringAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.accessibilityservice.AccessibilityService"/>
             </intent-filter>
-            <meta-data android:name="android.accessibilityservice"
+            <meta-data
+                android:name="android.accessibilityservice"
                 android:resource="@xml/accessibility_service_config"/>
         </service>
     </application>
