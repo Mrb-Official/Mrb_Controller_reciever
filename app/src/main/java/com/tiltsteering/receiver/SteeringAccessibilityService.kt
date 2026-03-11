@@ -17,7 +17,7 @@ class SteeringAccessibilityService : AccessibilityService() {
         var ACCEL_Y = 800f
         const val DEADZONE = 2.0f
         const val THRESHOLD = 0.3f
-        const val HOLD_MS = 100L
+        const val HOLD_MS = 500L
     }
 
     private var lastDir = 0
@@ -25,13 +25,10 @@ class SteeringAccessibilityService : AccessibilityService() {
     private var accelHeld = false
     private var busy = false
 
-    // Test function - screen center pe touch karo
     fun testTouch() {
         val screenWidth = resources.displayMetrics.widthPixels.toFloat()
         val screenHeight = resources.displayMetrics.heightPixels.toFloat()
-        val centerX = screenWidth / 2
-        val centerY = screenHeight / 2
-        hold(centerX, centerY)
+        hold(screenWidth / 2, screenHeight / 2)
     }
 
     fun handleTilt(tilt: Float) {
@@ -57,13 +54,16 @@ class SteeringAccessibilityService : AccessibilityService() {
 
     private fun hold(x: Float, y: Float) {
         if (busy) return
-        val stroke = GestureDescription.StrokeDescription(
-            Path().apply { moveTo(x, y) },
-            0, HOLD_MS, true
+
+        // Press karo
+        val pressPath = Path().apply { moveTo(x, y) }
+        val press = GestureDescription.StrokeDescription(
+            pressPath, 0, HOLD_MS, true
         )
+
         busy = true
         dispatchGesture(
-            GestureDescription.Builder().addStroke(stroke).build(),
+            GestureDescription.Builder().addStroke(press).build(),
             object : GestureResultCallback() {
                 override fun onCompleted(g: GestureDescription) {
                     busy = false
