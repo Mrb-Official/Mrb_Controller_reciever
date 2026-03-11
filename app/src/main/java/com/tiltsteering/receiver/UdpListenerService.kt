@@ -8,6 +8,14 @@ import kotlinx.coroutines.*
 import java.net.*
 
 class UdpListenerService : Service() {
+
+    companion object {
+        // UI ke liye live data
+        var lastTilt: String = "0.0"
+        var lastRace: Boolean = false
+        var packetCount: Int = 0
+    }
+
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var socket: DatagramSocket? = null
     private var running = false
@@ -16,7 +24,6 @@ class UdpListenerService : Service() {
         createChannel()
         startForeground(1, buildNotification())
         running = true
-        // Discovery service bhi start karo
         DiscoveryService.start()
         scope.launch {
             try {
@@ -28,27 +35,35 @@ class UdpListenerService : Service() {
                         val pkt = DatagramPacket(buf, buf.size)
                         socket?.receive(pkt)
                         val msg = String(pkt.data, 0, pkt.length).trim()
+                        packetCount++
+                        Log.d("UDP", "Got: $msg")
                         dispatch(msg)
                     } catch (e: Exception) {
                         if (running) Log.w("UDP", e.message ?: "")
                     }
                 }
             } catch (e: Exception) {
-                Log.e("UDP", "Socket error: ${e.message}")
+                Log.e("UDP", "Error: ${e.message}")
             }
         }
         return START_STICKY
     }
 
     private fun dispatch(msg: String) {
-        val svc = SteeringAccessibilityService.instance ?: return
         when {
             msg.startsWith("STEER:") -> {
                 val tilt = msg.removePrefix("STEER:").toFloatOrNull() ?: return
-                svc.handleTilt(tilt)
+                lastTilt = tilt.toString()
+                SteeringAccessibilityService.instance?.handleTilt(tilt)
             }
-            msg == "RACE:ON" -> svc.handleAccelerator(true)
-            msg == "RACE:OFF" -> svc.handleAccelerator(false)
+            msg == "RACE:ON" -> {
+                lastRace = true
+                SteeringAccessibilityService.instance?.handleAccelerator(true)
+            }
+            msg == "RACE:OFF" -> {
+                lastRace = false
+                SteeringAccessibilityService.instance?.handleAccelerator(false)
+            }
         }
     }
 
@@ -74,7 +89,7 @@ class UdpListenerService : Service() {
     private fun buildNotification() =
         Notification.Builder(this, "tilt")
             .setContentTitle("Tilt Steering Active")
-            .setContentText("UDP listening on port 9876")
+            .setContentText("Listening on port 9876")
             .setSmallIcon(android.R.drawable.ic_media_play)
             .build()
 }
