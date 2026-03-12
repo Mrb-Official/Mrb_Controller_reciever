@@ -12,7 +12,6 @@ class SteeringAccessibilityService : AccessibilityService() {
     companion object {
         var instance: SteeringAccessibilityService? = null
 
-        // var rakha hai taaki app se change ho sake
         var LEFT_X  = 580f
         var LEFT_Y  = 700f
         var RIGHT_X = 229f
@@ -21,7 +20,6 @@ class SteeringAccessibilityService : AccessibilityService() {
         var ACCEL_Y = 850f
         const val DEADZONE = 1.0f
 
-        // Sender se accessibility band karne ke liye
         fun disableFromSender() {
             instance?.disableSelf()
             instance = null
@@ -29,69 +27,79 @@ class SteeringAccessibilityService : AccessibilityService() {
     }
 
     private val handler = Handler(Looper.getMainLooper())
-    private var lastDir = 0
+    private var lastTilt = 0f
     private var accelHeld = false
     private var steeringActive = false
-    private var currentSteerDir = 0
     private var accelActive = false
+    private var currentDir = 0
 
     fun handleTilt(tilt: Float) {
+        lastTilt = tilt
         val dir = when {
             tilt > DEADZONE  -> -1
             tilt < -DEADZONE ->  1
             else             ->  0
         }
-        if (dir == lastDir) return
-        lastDir = dir
-        when (dir) {
-            -1 -> startSteering(-1)
-             1 -> startSteering(1)
-             0 -> stopSteering()
+
+        if (dir != currentDir) {
+            currentDir = dir
+            steeringActive = dir != 0
+            if (steeringActive) doSteer()
         }
     }
 
     fun handleAccelerator(on: Boolean) {
         if (accelHeld == on) return
         accelHeld = on
-        if (on) startAccel() else stopAccel()
+        if (on) { accelActive = true; doAccel() }
+        else accelActive = false
     }
 
-    private fun startSteering(dir: Int) {
-        steeringActive = true
-        currentSteerDir = dir
-        doSteer(dir)
-    }
+    private fun doSteer() {
+        if (!steeringActive || currentDir == 0) return
 
-    private fun stopSteering() {
-        steeringActive = false
-        currentSteerDir = 0
-    }
+        // Tilt value se swipe length calculate karo
+        // Thoda tilt = choti swipe, zyada tilt = lambi swipe
+        val tiltAbs = Math.abs(lastTilt).coerceIn(DEADZONE, 10f)
+        val swipeLength = ((tiltAbs - DEADZONE) / (10f - DEADZONE) * 200f) + 20f
 
-    private fun startAccel() {
-        accelActive = true
-        doAccel()
-    }
+        // Center point se swipe karo
+        val centerX = (LEFT_X + RIGHT_X) / 2f
+        val centerY = (LEFT_Y + RIGHT_Y) / 2f
 
-    private fun stopAccel() {
-        accelActive = false
-    }
+        val startX: Float
+        val endX: Float
 
-    private fun doSteer(dir: Int) {
-        if (!steeringActive || currentSteerDir != dir) return
-        val x = if (dir == -1) LEFT_X else RIGHT_X
-        val y = if (dir == -1) LEFT_Y else RIGHT_Y
-        val path = Path().apply { moveTo(x, y) }
-        val stroke = GestureDescription.StrokeDescription(path, 0L, 1000L)
+        if (currentDir == -1) {
+            // LEFT swipe
+            startX = centerX + swipeLength / 2
+            endX   = centerX - swipeLength / 2
+        } else {
+            // RIGHT swipe
+            startX = centerX - swipeLength / 2
+            endX   = centerX + swipeLength / 2
+        }
+
+        val path = Path().apply {
+            moveTo(startX, centerY)
+            lineTo(endX, centerY)
+        }
+
+        // Swipe duration bhi tilt se — zyada tilt = tezi swipe
+        val duration = (300f - (tiltAbs / 10f * 200f)).toLong().coerceIn(50L, 300L)
+
+        val stroke = GestureDescription.StrokeDescription(path, 0L, duration)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
+
         dispatchGesture(gesture, object : GestureResultCallback() {
             override fun onCompleted(g: GestureDescription) {
-                if (steeringActive && currentSteerDir == dir) {
-                    handler.post { doSteer(dir) }
+                if (steeringActive && currentDir != 0) {
+                    handler.postDelayed({ doSteer() }, 16L)
                 }
             }
             override fun onCancelled(g: GestureDescription) {
-                if (steeringActive && currentSteerDir == dir) {
-                    handler.postDelayed({ doSteer(dir) }, 16L)
+                if (steeringActive && currentDir != 0) {
+                    handler.postDelayed({ doSteer() }, 16L)
                 }
             }
         }, handler)
