@@ -2,11 +2,11 @@ package com.tiltsteering.receiver
 
 import android.util.Log
 import rikka.shizuku.Shizuku
-import rikka.shizuku.ShizukuRemoteProcess
+import rikka.shizuku.Process
 
 object TouchInjector {
 
-    private var process: ShizukuRemoteProcess? = null
+    private var process: Process? = null
     private var outputStream: java.io.OutputStream? = null
     private val TAG = "TouchInjector"
 
@@ -47,7 +47,7 @@ object TouchInjector {
     private fun ensureProcess() {
         if (process == null || outputStream == null) {
             try {
-                process = Shizuku.newProcess(arrayOf("sh"), null, null)
+                process = Runtime.getRuntime().exec("sh")
                 outputStream = process!!.outputStream
                 Log.d(TAG, "Shizuku process started!")
             } catch (e: Exception) {
