@@ -15,8 +15,10 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var tvStatus: TextView
     private lateinit var tvData: TextView
-    private lateinit var etCenterX: EditText
-    private lateinit var etCenterY: EditText
+    private lateinit var etLeftX: EditText
+    private lateinit var etLeftY: EditText
+    private lateinit var etRightX: EditText
+    private lateinit var etRightY: EditText
     private lateinit var etAccelX: EditText
     private lateinit var etAccelY: EditText
     private lateinit var prefs: SharedPreferences
@@ -26,39 +28,45 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        prefs = getSharedPreferences("coords", MODE_PRIVATE)
-
+        prefs     = getSharedPreferences("coords", MODE_PRIVATE)
         tvStatus  = findViewById(R.id.tvStatus)
         tvData    = findViewById(R.id.tvData)
-        etCenterX = findViewById(R.id.etCenterX)
-        etCenterY = findViewById(R.id.etCenterY)
+        etLeftX   = findViewById(R.id.etLeftX)
+        etLeftY   = findViewById(R.id.etLeftY)
+        etRightX  = findViewById(R.id.etRightX)
+        etRightY  = findViewById(R.id.etRightY)
         etAccelX  = findViewById(R.id.etAccelX)
         etAccelY  = findViewById(R.id.etAccelY)
 
-        // Saved values load karo
-        etCenterX.setText(prefs.getFloat("centerX", 400f).toString())
-        etCenterY.setText(prefs.getFloat("centerY", 700f).toString())
+        etLeftX.setText(prefs.getFloat("leftX",   150f).toString())
+        etLeftY.setText(prefs.getFloat("leftY",   750f).toString())
+        etRightX.setText(prefs.getFloat("rightX", 450f).toString())
+        etRightY.setText(prefs.getFloat("rightY", 750f).toString())
         etAccelX.setText(prefs.getFloat("accelX", 2192f).toString())
         etAccelY.setText(prefs.getFloat("accelY", 850f).toString())
 
-        // Save button
         findViewById<Button>(R.id.btnSaveCoords).setOnClickListener {
-            val cx = etCenterX.text.toString().toFloatOrNull() ?: 400f
-            val cy = etCenterY.text.toString().toFloatOrNull() ?: 700f
+            val lx = etLeftX.text.toString().toFloatOrNull()  ?: 150f
+            val ly = etLeftY.text.toString().toFloatOrNull()  ?: 750f
+            val rx = etRightX.text.toString().toFloatOrNull() ?: 450f
+            val ry = etRightY.text.toString().toFloatOrNull() ?: 750f
             val ax = etAccelX.text.toString().toFloatOrNull() ?: 2192f
             val ay = etAccelY.text.toString().toFloatOrNull() ?: 850f
 
             prefs.edit()
-                .putFloat("centerX", cx).putFloat("centerY", cy)
+                .putFloat("leftX", lx).putFloat("leftY", ly)
+                .putFloat("rightX", rx).putFloat("rightY", ry)
                 .putFloat("accelX", ax).putFloat("accelY", ay)
                 .apply()
 
-            SteeringAccessibilityService.CENTER_X = cx
-            SteeringAccessibilityService.CENTER_Y = cy
-            SteeringAccessibilityService.ACCEL_X  = ax
-            SteeringAccessibilityService.ACCEL_Y  = ay
+            SteeringAccessibilityService.LEFT_X  = lx
+            SteeringAccessibilityService.LEFT_Y  = ly
+            SteeringAccessibilityService.RIGHT_X = rx
+            SteeringAccessibilityService.RIGHT_Y = ry
+            SteeringAccessibilityService.ACCEL_X = ax
+            SteeringAccessibilityService.ACCEL_Y = ay
 
-            tvStatus.text = "✅ Coordinates saved!"
+            tvStatus.text = "✅ Saved!"
         }
 
         findViewById<Button>(R.id.btnAccessibility).setOnClickListener {
@@ -66,16 +74,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         findViewById<Button>(R.id.btnStart).setOnClickListener {
-            val svc = SteeringAccessibilityService.instance
-            if (svc == null) {
+            if (SteeringAccessibilityService.instance == null) {
                 tvStatus.text = "❌ Pehle Accessibility ON karo!"
             } else {
-                SteeringAccessibilityService.CENTER_X = prefs.getFloat("centerX", 400f)
-                SteeringAccessibilityService.CENTER_Y = prefs.getFloat("centerY", 700f)
-                SteeringAccessibilityService.ACCEL_X  = prefs.getFloat("accelX", 2192f)
-                SteeringAccessibilityService.ACCEL_Y  = prefs.getFloat("accelY", 850f)
+                SteeringAccessibilityService.LEFT_X  = prefs.getFloat("leftX",  150f)
+                SteeringAccessibilityService.LEFT_Y  = prefs.getFloat("leftY",  750f)
+                SteeringAccessibilityService.RIGHT_X = prefs.getFloat("rightX", 450f)
+                SteeringAccessibilityService.RIGHT_Y = prefs.getFloat("rightY", 750f)
+                SteeringAccessibilityService.ACCEL_X = prefs.getFloat("accelX", 2192f)
+                SteeringAccessibilityService.ACCEL_Y = prefs.getFloat("accelY", 850f)
                 startForegroundService(Intent(this, UdpListenerService::class.java))
-                tvStatus.text = "✅ UDP Listening on Port 9876"
+                tvStatus.text = "✅ UDP Active!"
             }
         }
 
@@ -86,10 +95,8 @@ class MainActivity : AppCompatActivity() {
 
         handler.post(object : Runnable {
             override fun run() {
-                val accStatus = if (SteeringAccessibilityService.instance != null)
-                    "✅ ON" else "❌ OFF"
                 tvData.text = """
-                    Accessibility: $accStatus
+                    Accessibility: ${if (SteeringAccessibilityService.instance != null) "✅ ON" else "❌ OFF"}
                     Packets: ${UdpListenerService.packetCount}
                     Tilt: ${UdpListenerService.lastTilt}
                     Gas: ${if (UdpListenerService.gasOn) "ON 🔥" else "OFF"}
