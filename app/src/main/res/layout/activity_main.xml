@@ -13,14 +13,14 @@
         android:layout_height="wrap_content"/>
 
     <TextView
-        android:text="W=Gas  A=Left  D=Right  S=Brake"
-        android:textSize="14sp" android:textColor="#555555"
+        android:text="Shizuku + ADB Multitouch"
+        android:textSize="13sp" android:textColor="#888888"
         android:layout_marginBottom="32dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 
-    <Button android:id="@+id/btnIME"
-        android:text="1. Select Tilt Keyboard"
+    <Button android:id="@+id/btnShizuku"
+        android:text="1. Open Shizuku"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="12dp"/>

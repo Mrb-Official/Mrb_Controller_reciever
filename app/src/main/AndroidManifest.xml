@@ -26,18 +26,5 @@
             android:foregroundServiceType="dataSync"
             android:exported="false"/>
 
-        <service
-            android:name=".TiltInputMethodService"
-            android:exported="true"
-            android:label="Tilt Keyboard"
-            android:permission="android.permission.BIND_INPUT_METHOD">
-            <intent-filter>
-                <action android:name="android.view.InputMethod"/>
-            </intent-filter>
-            <meta-data
-                android:name="android.view.im"
-                android:resource="@xml/input_method"/>
-        </service>
-
     </application>
 </manifest>

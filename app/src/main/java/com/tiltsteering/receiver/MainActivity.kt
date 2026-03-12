@@ -1,6 +1,7 @@
 package com.tiltsteering.receiver
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -22,30 +23,38 @@ class MainActivity : AppCompatActivity() {
         tvStatus = findViewById(R.id.tvStatus)
         tvData   = findViewById(R.id.tvData)
 
-        findViewById<Button>(R.id.btnIME).setOnClickListener {
-            startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
+        findViewById<Button>(R.id.btnShizuku).setOnClickListener {
+            try {
+                val intent = packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")
+                if (intent != null) startActivity(intent)
+                else {
+                    startActivity(Intent(Intent.ACTION_VIEW,
+                        Uri.parse("market://details?id=moe.shizuku.privileged.api")))
+                }
+            } catch (e: Exception) {
+                tvStatus.text = "Shizuku install karo!"
+            }
         }
 
         findViewById<Button>(R.id.btnStart).setOnClickListener {
-            if (TiltInputMethodService.instance == null) {
-                tvStatus.text = "❌ Pehle Tilt Keyboard select karo!"
-            } else {
-                startForegroundService(Intent(this, UdpListenerService::class.java))
-                tvStatus.text = "✅ Controller Active!"
+            if (!TouchInjector.isShizukuReady()) {
+                tvStatus.text = "❌ Shizuku ready nahi! Pehle Shizuku start karo"
+                return@setOnClickListener
             }
+            startForegroundService(Intent(this, UdpListenerService::class.java))
+            tvStatus.text = "✅ Controller Active!"
         }
 
         findViewById<Button>(R.id.btnStop).setOnClickListener {
             stopService(Intent(this, UdpListenerService::class.java))
+            TouchInjector.release()
             tvStatus.text = "⛔ Stopped"
         }
 
         handler.post(object : Runnable {
             override fun run() {
-                val imeStatus = if (TiltInputMethodService.instance != null)
-                    "✅ Active" else "❌ Select karo"
                 tvData.text = """
-                    IME: $imeStatus
+                    Shizuku: ${if (TouchInjector.isShizukuReady()) "✅ Ready" else "❌ Start karo"}
                     Packets: ${UdpListenerService.packetCount}
                     Tilt: ${UdpListenerService.lastTilt}
                     Gas: ${if (UdpListenerService.gasOn) "ON 🔥" else "OFF"}
