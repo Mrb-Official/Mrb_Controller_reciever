@@ -5,7 +5,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
-import android.provider.Settings
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
@@ -27,20 +26,13 @@ class MainActivity : AppCompatActivity() {
             try {
                 val intent = packageManager.getLaunchIntentForPackage("moe.shizuku.privileged.api")
                 if (intent != null) startActivity(intent)
-                else {
-                    startActivity(Intent(Intent.ACTION_VIEW,
-                        Uri.parse("market://details?id=moe.shizuku.privileged.api")))
-                }
-            } catch (e: Exception) {
-                tvStatus.text = "Shizuku install karo!"
-            }
+            } catch (e: Exception) {}
+            // Permission request
+            TouchInjector.requestPermission()
         }
 
         findViewById<Button>(R.id.btnStart).setOnClickListener {
-            if (!TouchInjector.isShizukuReady()) {
-                tvStatus.text = "❌ Shizuku ready nahi! Pehle Shizuku start karo"
-                return@setOnClickListener
-            }
+            // Shizuku check hataya — seedha start
             startForegroundService(Intent(this, UdpListenerService::class.java))
             tvStatus.text = "✅ Controller Active!"
         }
