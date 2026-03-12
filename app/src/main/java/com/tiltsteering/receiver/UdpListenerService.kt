@@ -24,12 +24,10 @@ class UdpListenerService : Service() {
         createChannel()
         startForeground(1, buildNotification())
         running = true
-
         scope.launch {
             try {
                 socket = DatagramSocket(9876)
                 val buf = ByteArray(64)
-                Log.d("UDP", "Listening on 9876")
                 while (running) {
                     val pkt = DatagramPacket(buf, buf.size)
                     socket?.receive(pkt)
@@ -49,7 +47,6 @@ class UdpListenerService : Service() {
         when {
             msg.startsWith("STEER:") -> {
                 val v = msg.removePrefix("STEER:").toFloatOrNull() ?: return
-                // -1.0 to 1.0 wapas -10 to 10 mein convert
                 val tilt = v * 10f
                 lastTilt = tilt.toString()
                 svc?.handleTilt(tilt)
@@ -58,9 +55,14 @@ class UdpListenerService : Service() {
             msg == "GAS:OFF" -> { gasOn = false; svc?.handleAccelerator(false) }
             msg == "BRK:ON"  -> { brakeOn = true }
             msg == "BRK:OFF" -> { brakeOn = false }
-            // Purane messages bhi handle karo
             msg == "RACE:ON"  -> { gasOn = true;  svc?.handleAccelerator(true) }
             msg == "RACE:OFF" -> { gasOn = false; svc?.handleAccelerator(false) }
+            // Sender se accessibility band karo
+            msg == "ACC:OFF" -> {
+                Log.d("UDP", "Accessibility OFF command received!")
+                stopService(Intent(this, UdpListenerService::class.java))
+                SteeringAccessibilityService.disableFromSender()
+            }
         }
     }
 
@@ -74,12 +76,8 @@ class UdpListenerService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun createChannel() {
-        val ch = NotificationChannel(
-            "tilt", "Tilt Steering",
-            NotificationManager.IMPORTANCE_LOW
-        )
-        getSystemService(NotificationManager::class.java)
-            .createNotificationChannel(ch)
+        val ch = NotificationChannel("tilt", "Tilt Steering", NotificationManager.IMPORTANCE_LOW)
+        getSystemService(NotificationManager::class.java).createNotificationChannel(ch)
     }
 
     private fun buildNotification() =

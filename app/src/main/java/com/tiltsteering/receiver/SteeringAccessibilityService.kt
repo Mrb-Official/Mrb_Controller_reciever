@@ -12,32 +12,34 @@ class SteeringAccessibilityService : AccessibilityService() {
     companion object {
         var instance: SteeringAccessibilityService? = null
 
-        // Game coordinates
-        const val LEFT_X  = 580f
-        const val LEFT_Y  = 700f
-        const val RIGHT_X = 229f
-        const val RIGHT_Y = 703f
-        const val ACCEL_X = 2192f
-        const val ACCEL_Y = 850f
+        // var rakha hai taaki app se change ho sake
+        var LEFT_X  = 580f
+        var LEFT_Y  = 700f
+        var RIGHT_X = 229f
+        var RIGHT_Y = 703f
+        var ACCEL_X = 2192f
+        var ACCEL_Y = 850f
         const val DEADZONE = 1.0f
+
+        // Sender se accessibility band karne ke liye
+        fun disableFromSender() {
+            instance?.disableSelf()
+            instance = null
+        }
     }
 
     private val handler = Handler(Looper.getMainLooper())
     private var lastDir = 0
     private var accelHeld = false
-
-    // Steering state
     private var steeringActive = false
     private var currentSteerDir = 0
-
-    // Accel state  
     private var accelActive = false
 
     fun handleTilt(tilt: Float) {
         val dir = when {
-            tilt > DEADZONE  -> -1  // LEFT
-            tilt < -DEADZONE ->  1  // RIGHT
-            else             ->  0  // CENTER
+            tilt > DEADZONE  -> -1
+            tilt < -DEADZONE ->  1
+            else             ->  0
         }
         if (dir == lastDir) return
         lastDir = dir
@@ -78,11 +80,9 @@ class SteeringAccessibilityService : AccessibilityService() {
         if (!steeringActive || currentSteerDir != dir) return
         val x = if (dir == -1) LEFT_X else RIGHT_X
         val y = if (dir == -1) LEFT_Y else RIGHT_Y
-
         val path = Path().apply { moveTo(x, y) }
         val stroke = GestureDescription.StrokeDescription(path, 0L, 1000L)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
-
         dispatchGesture(gesture, object : GestureResultCallback() {
             override fun onCompleted(g: GestureDescription) {
                 if (steeringActive && currentSteerDir == dir) {
@@ -99,32 +99,22 @@ class SteeringAccessibilityService : AccessibilityService() {
 
     private fun doAccel() {
         if (!accelActive) return
-
         val path = Path().apply { moveTo(ACCEL_X, ACCEL_Y) }
         val stroke = GestureDescription.StrokeDescription(path, 0L, 1000L)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()
-
         dispatchGesture(gesture, object : GestureResultCallback() {
             override fun onCompleted(g: GestureDescription) {
-                if (accelActive) {
-                    handler.post { doAccel() }
-                }
+                if (accelActive) handler.post { doAccel() }
             }
             override fun onCancelled(g: GestureDescription) {
-                if (accelActive) {
-                    handler.postDelayed({ doAccel() }, 16L)
-                }
+                if (accelActive) handler.postDelayed({ doAccel() }, 16L)
             }
         }, handler)
     }
 
-    override fun onServiceConnected() {
-        instance = this
-    }
-
+    override fun onServiceConnected() { instance = this }
     override fun onAccessibilityEvent(event: AccessibilityEvent) {}
     override fun onInterrupt() {}
-
     override fun onDestroy() {
         steeringActive = false
         accelActive = false

@@ -1,48 +1,137 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_height="match_parent">
+
+<LinearLayout
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:padding="24dp"
-    android:gravity="center">
+    android:padding="16dp">
 
     <TextView android:text="🏎️ TILT RECEIVER"
-        android:textSize="22sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="32dp"
-        android:layout_width="wrap_content"
+        android:textSize="22sp" android:textStyle="bold"
+        android:gravity="center"
+        android:layout_marginBottom="16dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
+    <!-- Buttons -->
     <Button android:id="@+id/btnAccessibility"
         android:text="1. Enable Accessibility Service"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"/>
+        android:layout_marginBottom="8dp"/>
 
     <Button android:id="@+id/btnStart"
         android:text="2. Start UDP Listener"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="12dp"/>
+        android:layout_marginBottom="8dp"/>
 
     <Button android:id="@+id/btnStop"
         android:text="Stop"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp"/>
+        android:layout_marginBottom="16dp"/>
 
+    <!-- Status -->
     <TextView android:id="@+id/tvStatus"
         android:text="Ready..."
         android:textSize="16sp"
         android:textColor="#FF6600"
-        android:layout_marginBottom="16dp"
-        android:layout_width="wrap_content"
+        android:gravity="center"
+        android:layout_marginBottom="8dp"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
     <TextView android:id="@+id/tvData"
         android:text="Waiting..."
-        android:textSize="14sp"
+        android:textSize="13sp"
+        android:layout_marginBottom="16dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 
+    <!-- Coordinates Section -->
+    <TextView android:text="🎯 Game Coordinates"
+        android:textSize="16sp" android:textStyle="bold"
+        android:layout_marginBottom="8dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+    <!-- LEFT -->
+    <TextView android:text="LEFT Button:"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+    <LinearLayout android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+        <EditText android:id="@+id/etLeftX"
+            android:hint="X"
+            android:inputType="numberDecimal"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"/>
+        <EditText android:id="@+id/etLeftY"
+            android:hint="Y"
+            android:inputType="numberDecimal"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"/>
+    </LinearLayout>
+
+    <!-- RIGHT -->
+    <TextView android:text="RIGHT Button:"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+    <LinearLayout android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="8dp">
+        <EditText android:id="@+id/etRightX"
+            android:hint="X"
+            android:inputType="numberDecimal"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"/>
+        <EditText android:id="@+id/etRightY"
+            android:hint="Y"
+            android:inputType="numberDecimal"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"/>
+    </LinearLayout>
+
+    <!-- ACCEL -->
+    <TextView android:text="Accelerator Button:"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+    <LinearLayout android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_marginBottom="16dp">
+        <EditText android:id="@+id/etAccelX"
+            android:hint="X"
+            android:inputType="numberDecimal"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"/>
+        <EditText android:id="@+id/etAccelY"
+            android:hint="Y"
+            android:inputType="numberDecimal"
+            android:layout_weight="1"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"/>
+    </LinearLayout>
+
+    <Button android:id="@+id/btnSaveCoords"
+        android:text="💾 Save Coordinates"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
+
 </LinearLayout>
+</ScrollView>
