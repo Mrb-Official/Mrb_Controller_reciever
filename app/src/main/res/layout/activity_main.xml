@@ -16,7 +16,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"/>
 
-    <!-- Buttons -->
     <Button android:id="@+id/btnAccessibility"
         android:text="1. Enable Accessibility Service"
         android:layout_width="match_parent"
@@ -35,7 +34,6 @@
         android:layout_height="wrap_content"
         android:layout_marginBottom="16dp"/>
 
-    <!-- Status -->
     <TextView android:id="@+id/tvStatus"
         android:text="Ready..."
         android:textSize="16sp"
@@ -48,80 +46,62 @@
     <TextView android:id="@+id/tvData"
         android:text="Waiting..."
         android:textSize="13sp"
-        android:layout_marginBottom="16dp"
+        android:layout_marginBottom="24dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 
-    <!-- Coordinates Section -->
-    <TextView android:text="🎯 Game Coordinates"
+    <!-- Steering Center -->
+    <TextView android:text="🎯 Steering Center Point"
         android:textSize="16sp" android:textStyle="bold"
+        android:layout_marginBottom="4dp"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
+
+    <TextView android:text="Steering wheel ke niche center pe ungli rakho → X Y daalo"
+        android:textSize="12sp" android:textColor="#888888"
         android:layout_marginBottom="8dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 
-    <!-- LEFT -->
-    <TextView android:text="LEFT Button:"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
     <LinearLayout android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:layout_marginBottom="8dp">
-        <EditText android:id="@+id/etLeftX"
-            android:hint="X"
+        android:layout_marginBottom="16dp">
+        <EditText android:id="@+id/etCenterX"
+            android:hint="Center X"
             android:inputType="numberDecimal"
             android:layout_weight="1"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"/>
-        <EditText android:id="@+id/etLeftY"
-            android:hint="Y"
+        <EditText android:id="@+id/etCenterY"
+            android:hint="Center Y"
             android:inputType="numberDecimal"
             android:layout_weight="1"
             android:layout_width="0dp"
             android:layout_height="wrap_content"/>
     </LinearLayout>
 
-    <!-- RIGHT -->
-    <TextView android:text="RIGHT Button:"
+    <!-- Accelerator -->
+    <TextView android:text="🔥 Accelerator Button"
+        android:textSize="16sp" android:textStyle="bold"
+        android:layout_marginBottom="4dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
-    <LinearLayout android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:layout_marginBottom="8dp">
-        <EditText android:id="@+id/etRightX"
-            android:hint="X"
-            android:inputType="numberDecimal"
-            android:layout_weight="1"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_marginEnd="8dp"/>
-        <EditText android:id="@+id/etRightY"
-            android:hint="Y"
-            android:inputType="numberDecimal"
-            android:layout_weight="1"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"/>
-    </LinearLayout>
 
-    <!-- ACCEL -->
-    <TextView android:text="Accelerator Button:"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
     <LinearLayout android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
         android:layout_marginBottom="16dp">
         <EditText android:id="@+id/etAccelX"
-            android:hint="X"
+            android:hint="Accel X"
             android:inputType="numberDecimal"
             android:layout_weight="1"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"/>
         <EditText android:id="@+id/etAccelY"
-            android:hint="Y"
+            android:hint="Accel Y"
             android:inputType="numberDecimal"
             android:layout_weight="1"
             android:layout_width="0dp"

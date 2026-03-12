@@ -12,13 +12,13 @@ class SteeringAccessibilityService : AccessibilityService() {
     companion object {
         var instance: SteeringAccessibilityService? = null
 
-        var LEFT_X  = 580f
-        var LEFT_Y  = 700f
-        var RIGHT_X = 229f
-        var RIGHT_Y = 703f
-        var ACCEL_X = 2192f
-        var ACCEL_Y = 850f
+        // Sirf CENTER point — baki sab calculate hoga
+        var CENTER_X = 400f
+        var CENTER_Y = 700f
+        var ACCEL_X  = 2192f
+        var ACCEL_Y  = 850f
         const val DEADZONE = 1.0f
+        const val MAX_SWIPE = 300f  // Maximum swipe length pixels
 
         fun disableFromSender() {
             instance?.disableSelf()
@@ -36,11 +36,10 @@ class SteeringAccessibilityService : AccessibilityService() {
     fun handleTilt(tilt: Float) {
         lastTilt = tilt
         val dir = when {
-            tilt > DEADZONE  -> -1
-            tilt < -DEADZONE ->  1
-            else             ->  0
+            tilt > DEADZONE  -> -1  // LEFT
+            tilt < -DEADZONE ->  1  // RIGHT
+            else             ->  0  // CENTER
         }
-
         if (dir != currentDir) {
             currentDir = dir
             steeringActive = dir != 0
@@ -58,35 +57,32 @@ class SteeringAccessibilityService : AccessibilityService() {
     private fun doSteer() {
         if (!steeringActive || currentDir == 0) return
 
-        // Tilt value se swipe length calculate karo
-        // Thoda tilt = choti swipe, zyada tilt = lambi swipe
+        // Tilt se swipe length calculate karo
         val tiltAbs = Math.abs(lastTilt).coerceIn(DEADZONE, 10f)
-        val swipeLength = ((tiltAbs - DEADZONE) / (10f - DEADZONE) * 200f) + 20f
+        val ratio = (tiltAbs - DEADZONE) / (10f - DEADZONE)
+        val swipeLen = ratio * MAX_SWIPE + 20f
 
-        // Center point se swipe karo
-        val centerX = (LEFT_X + RIGHT_X) / 2f
-        val centerY = (LEFT_Y + RIGHT_Y) / 2f
-
+        // Center se left ya right swipe
         val startX: Float
         val endX: Float
 
         if (currentDir == -1) {
-            // LEFT swipe
-            startX = centerX + swipeLength / 2
-            endX   = centerX - swipeLength / 2
+            // LEFT — center se left
+            startX = CENTER_X + swipeLen / 2
+            endX   = CENTER_X - swipeLen / 2
         } else {
-            // RIGHT swipe
-            startX = centerX - swipeLength / 2
-            endX   = centerX + swipeLength / 2
+            // RIGHT — center se right
+            startX = CENTER_X - swipeLen / 2
+            endX   = CENTER_X + swipeLen / 2
         }
+
+        // Tilt zyada = swipe tezi
+        val duration = (300f - ratio * 250f).toLong().coerceIn(50L, 300L)
 
         val path = Path().apply {
-            moveTo(startX, centerY)
-            lineTo(endX, centerY)
+            moveTo(startX, CENTER_Y)
+            lineTo(endX, CENTER_Y)
         }
-
-        // Swipe duration bhi tilt se — zyada tilt = tezi swipe
-        val duration = (300f - (tiltAbs / 10f * 200f)).toLong().coerceIn(50L, 300L)
 
         val stroke = GestureDescription.StrokeDescription(path, 0L, duration)
         val gesture = GestureDescription.Builder().addStroke(stroke).build()

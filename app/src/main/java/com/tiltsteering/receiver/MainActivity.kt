@@ -15,10 +15,8 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var tvStatus: TextView
     private lateinit var tvData: TextView
-    private lateinit var etLeftX: EditText
-    private lateinit var etLeftY: EditText
-    private lateinit var etRightX: EditText
-    private lateinit var etRightY: EditText
+    private lateinit var etCenterX: EditText
+    private lateinit var etCenterY: EditText
     private lateinit var etAccelX: EditText
     private lateinit var etAccelY: EditText
     private lateinit var prefs: SharedPreferences
@@ -32,44 +30,33 @@ class MainActivity : AppCompatActivity() {
 
         tvStatus  = findViewById(R.id.tvStatus)
         tvData    = findViewById(R.id.tvData)
-        etLeftX   = findViewById(R.id.etLeftX)
-        etLeftY   = findViewById(R.id.etLeftY)
-        etRightX  = findViewById(R.id.etRightX)
-        etRightY  = findViewById(R.id.etRightY)
+        etCenterX = findViewById(R.id.etCenterX)
+        etCenterY = findViewById(R.id.etCenterY)
         etAccelX  = findViewById(R.id.etAccelX)
         etAccelY  = findViewById(R.id.etAccelY)
 
-        // Saved coordinates load karo
-        etLeftX.setText(prefs.getFloat("leftX", 580f).toString())
-        etLeftY.setText(prefs.getFloat("leftY", 700f).toString())
-        etRightX.setText(prefs.getFloat("rightX", 229f).toString())
-        etRightY.setText(prefs.getFloat("rightY", 703f).toString())
+        // Saved values load karo
+        etCenterX.setText(prefs.getFloat("centerX", 400f).toString())
+        etCenterY.setText(prefs.getFloat("centerY", 700f).toString())
         etAccelX.setText(prefs.getFloat("accelX", 2192f).toString())
         etAccelY.setText(prefs.getFloat("accelY", 850f).toString())
 
-        // Save coordinates button
+        // Save button
         findViewById<Button>(R.id.btnSaveCoords).setOnClickListener {
-            val lx = etLeftX.text.toString().toFloatOrNull() ?: 580f
-            val ly = etLeftY.text.toString().toFloatOrNull() ?: 700f
-            val rx = etRightX.text.toString().toFloatOrNull() ?: 229f
-            val ry = etRightY.text.toString().toFloatOrNull() ?: 703f
+            val cx = etCenterX.text.toString().toFloatOrNull() ?: 400f
+            val cy = etCenterY.text.toString().toFloatOrNull() ?: 700f
             val ax = etAccelX.text.toString().toFloatOrNull() ?: 2192f
             val ay = etAccelY.text.toString().toFloatOrNull() ?: 850f
 
-            // SharedPrefs mein save karo
             prefs.edit()
-                .putFloat("leftX", lx).putFloat("leftY", ly)
-                .putFloat("rightX", rx).putFloat("rightY", ry)
+                .putFloat("centerX", cx).putFloat("centerY", cy)
                 .putFloat("accelX", ax).putFloat("accelY", ay)
                 .apply()
 
-            // Accessibility service mein update karo
-            SteeringAccessibilityService.LEFT_X  = lx
-            SteeringAccessibilityService.LEFT_Y  = ly
-            SteeringAccessibilityService.RIGHT_X = rx
-            SteeringAccessibilityService.RIGHT_Y = ry
-            SteeringAccessibilityService.ACCEL_X = ax
-            SteeringAccessibilityService.ACCEL_Y = ay
+            SteeringAccessibilityService.CENTER_X = cx
+            SteeringAccessibilityService.CENTER_Y = cy
+            SteeringAccessibilityService.ACCEL_X  = ax
+            SteeringAccessibilityService.ACCEL_Y  = ay
 
             tvStatus.text = "✅ Coordinates saved!"
         }
@@ -83,13 +70,10 @@ class MainActivity : AppCompatActivity() {
             if (svc == null) {
                 tvStatus.text = "❌ Pehle Accessibility ON karo!"
             } else {
-                // Saved coords load karke service mein set karo
-                SteeringAccessibilityService.LEFT_X  = prefs.getFloat("leftX", 580f)
-                SteeringAccessibilityService.LEFT_Y  = prefs.getFloat("leftY", 700f)
-                SteeringAccessibilityService.RIGHT_X = prefs.getFloat("rightX", 229f)
-                SteeringAccessibilityService.RIGHT_Y = prefs.getFloat("rightY", 703f)
-                SteeringAccessibilityService.ACCEL_X = prefs.getFloat("accelX", 2192f)
-                SteeringAccessibilityService.ACCEL_Y = prefs.getFloat("accelY", 850f)
+                SteeringAccessibilityService.CENTER_X = prefs.getFloat("centerX", 400f)
+                SteeringAccessibilityService.CENTER_Y = prefs.getFloat("centerY", 700f)
+                SteeringAccessibilityService.ACCEL_X  = prefs.getFloat("accelX", 2192f)
+                SteeringAccessibilityService.ACCEL_Y  = prefs.getFloat("accelY", 850f)
                 startForegroundService(Intent(this, UdpListenerService::class.java))
                 tvStatus.text = "✅ UDP Listening on Port 9876"
             }
