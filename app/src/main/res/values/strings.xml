@@ -1,5 +1,3 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">TiltReceiver</string>
-    <string name="accessibility_description">Tilt Steering Controller for games</string>
+    <string name="app_name">TiltKeyboard</string>
 </resources>
