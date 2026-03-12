@@ -5,9 +5,9 @@ import rikka.shizuku.Shizuku
 
 object TouchInjector {
 
-    private var process: java.lang.Process? = null
-    private var outputStream: java.io.OutputStream? = null
     private val TAG = "TouchInjector"
+    private var shellProcess: java.lang.Process? = null
+    private var outputStream: java.io.OutputStream? = null
 
     var centerX = 300f
     var centerY = 750f
@@ -17,39 +17,52 @@ object TouchInjector {
 
     fun isShizukuReady(): Boolean {
         return try {
-            Shizuku.pingBinder() && Shizuku.checkSelfPermission() ==
+            Shizuku.pingBinder() &&
+            Shizuku.checkSelfPermission() ==
                 android.content.pm.PackageManager.PERMISSION_GRANTED
-        } catch (e: Exception) { false }
+        } catch (e: Exception) {
+            false
+        }
     }
 
     fun requestPermission() {
         try {
+            if (Shizuku.isPreV11() || Shizuku.getVersion() < 11) {
+                return
+            }
             Shizuku.requestPermission(100)
         } catch (e: Exception) {
             Log.e(TAG, "Permission request failed: ${e.message}")
         }
     }
 
-    private fun ensureProcess() {
-        if (process == null || outputStream == null) {
+    private fun ensureShell() {
+        if (shellProcess == null || outputStream == null) {
             try {
-                process = Runtime.getRuntime().exec("su")
-                outputStream = process!!.outputStream
-                Log.d(TAG, "Process started!")
+                // Shizuku se shell process start karo
+                val process = Shizuku.newProcess(
+                    arrayOf("sh"), null, null
+                )
+                shellProcess = process as java.lang.Process
+                outputStream = process.outputStream
+                Log.d(TAG, "Shizuku shell started!")
             } catch (e: Exception) {
-                Log.e(TAG, "Process failed: ${e.message}")
+                Log.e(TAG, "Shell failed: ${e.message}")
+                shellProcess = null
+                outputStream = null
             }
         }
     }
 
     private fun sendCmd(cmd: String) {
         try {
-            ensureProcess()
+            ensureShell()
             outputStream?.write("$cmd\n".toByteArray())
             outputStream?.flush()
+            Log.d(TAG, "CMD: $cmd")
         } catch (e: Exception) {
             Log.e(TAG, "CMD failed: ${e.message}")
-            process = null
+            shellProcess = null
             outputStream = null
         }
     }
@@ -76,9 +89,9 @@ object TouchInjector {
     fun release() {
         try {
             outputStream?.close()
-            process?.destroy()
+            shellProcess?.destroy()
         } catch (e: Exception) {}
-        process = null
+        shellProcess = null
         outputStream = null
     }
 }
