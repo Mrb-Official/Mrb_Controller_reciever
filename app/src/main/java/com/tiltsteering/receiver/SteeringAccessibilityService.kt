@@ -11,14 +11,12 @@ class SteeringAccessibilityService : AccessibilityService() {
 
     companion object {
         var instance: SteeringAccessibilityService? = null
-
-        // Sirf CENTER point — baki sab calculate hoga
-        var CENTER_X = 400f
-        var CENTER_Y = 700f
+        var CENTER_X = 300f
+        var CENTER_Y = 750f
         var ACCEL_X  = 2192f
         var ACCEL_Y  = 850f
         const val DEADZONE = 1.0f
-        const val MAX_SWIPE = 300f  // Maximum swipe length pixels
+        const val MAX_SWIPE = 150f
 
         fun disableFromSender() {
             instance?.disableSelf()
@@ -27,91 +25,69 @@ class SteeringAccessibilityService : AccessibilityService() {
     }
 
     private val handler = Handler(Looper.getMainLooper())
-    private var lastTilt = 0f
+    private var currentTilt = 0f
     private var accelHeld = false
-    private var steeringActive = false
     private var accelActive = false
-    private var currentDir = 0
+    private var gestureRunning = false
 
     fun handleTilt(tilt: Float) {
-        lastTilt = tilt
-        val dir = when {
-            tilt > DEADZONE  -> -1  // LEFT
-            tilt < -DEADZONE ->  1  // RIGHT
-            else             ->  0  // CENTER
-        }
-        if (dir != currentDir) {
-            currentDir = dir
-            steeringActive = dir != 0
-            if (steeringActive) doSteer()
+        currentTilt = tilt
+        if (!gestureRunning) {
+            startContinuousGesture()
         }
     }
 
     fun handleAccelerator(on: Boolean) {
         if (accelHeld == on) return
         accelHeld = on
-        if (on) { accelActive = true; doAccel() }
-        else accelActive = false
+        accelActive = on
     }
 
-    private fun doSteer() {
-        if (!steeringActive || currentDir == 0) return
-
-        // Tilt se swipe length calculate karo
-        val tiltAbs = Math.abs(lastTilt).coerceIn(DEADZONE, 10f)
-        val ratio = (tiltAbs - DEADZONE) / (10f - DEADZONE)
-        val swipeLen = ratio * MAX_SWIPE + 20f
-
-        // Center se left ya right swipe
-        val startX: Float
-        val endX: Float
-
-        if (currentDir == -1) {
-            // LEFT — center se left
-            startX = CENTER_X + swipeLen / 2
-            endX   = CENTER_X - swipeLen / 2
-        } else {
-            // RIGHT — center se right
-            startX = CENTER_X - swipeLen / 2
-            endX   = CENTER_X + swipeLen / 2
-        }
-
-        // Tilt zyada = swipe tezi
-        val duration = (300f - ratio * 250f).toLong().coerceIn(50L, 300L)
-
-        val path = Path().apply {
-            moveTo(startX, CENTER_Y)
-            lineTo(endX, CENTER_Y)
-        }
-
-        val stroke = GestureDescription.StrokeDescription(path, 0L, duration)
-        val gesture = GestureDescription.Builder().addStroke(stroke).build()
-
-        dispatchGesture(gesture, object : GestureResultCallback() {
-            override fun onCompleted(g: GestureDescription) {
-                if (steeringActive && currentDir != 0) {
-                    handler.postDelayed({ doSteer() }, 16L)
-                }
-            }
-            override fun onCancelled(g: GestureDescription) {
-                if (steeringActive && currentDir != 0) {
-                    handler.postDelayed({ doSteer() }, 16L)
-                }
-            }
-        }, handler)
+    private fun startContinuousGesture() {
+        gestureRunning = true
+        sendFrame()
     }
 
-    private fun doAccel() {
-        if (!accelActive) return
-        val path = Path().apply { moveTo(ACCEL_X, ACCEL_Y) }
-        val stroke = GestureDescription.StrokeDescription(path, 0L, 1000L)
-        val gesture = GestureDescription.Builder().addStroke(stroke).build()
-        dispatchGesture(gesture, object : GestureResultCallback() {
+    private fun sendFrame() {
+        if (!gestureRunning) return
+
+        val tilt = currentTilt
+        val builder = GestureDescription.Builder()
+
+        // Steering — center se tilt ke hisaab se position
+        val offset = when {
+            tilt > DEADZONE  -> -(tilt / 10f * MAX_SWIPE)   // LEFT
+            tilt < -DEADZONE ->  (-tilt / 10f * MAX_SWIPE)  // RIGHT
+            else             -> 0f                            // CENTER hold
+        }
+
+        val targetX = CENTER_X + offset
+
+        val steerPath = Path().apply {
+            moveTo(CENTER_X, CENTER_Y)
+            lineTo(targetX, CENTER_Y)
+        }
+
+        val steerStroke = GestureDescription.StrokeDescription(
+            steerPath, 0L, 100L, true  // willContinue = true = finger nahi uthegi
+        )
+        builder.addStroke(steerStroke)
+
+        // Accel ek saath
+        if (accelActive) {
+            val accelPath = Path().apply { moveTo(ACCEL_X, ACCEL_Y) }
+            val accelStroke = GestureDescription.StrokeDescription(
+                accelPath, 0L, 100L, true
+            )
+            builder.addStroke(accelStroke)
+        }
+
+        dispatchGesture(builder.build(), object : GestureResultCallback() {
             override fun onCompleted(g: GestureDescription) {
-                if (accelActive) handler.post { doAccel() }
+                handler.postDelayed({ sendFrame() }, 16L)
             }
             override fun onCancelled(g: GestureDescription) {
-                if (accelActive) handler.postDelayed({ doAccel() }, 16L)
+                handler.postDelayed({ sendFrame() }, 16L)
             }
         }, handler)
     }
@@ -120,8 +96,7 @@ class SteeringAccessibilityService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {}
     override fun onInterrupt() {}
     override fun onDestroy() {
-        steeringActive = false
-        accelActive = false
+        gestureRunning = false
         instance = null
         super.onDestroy()
     }
