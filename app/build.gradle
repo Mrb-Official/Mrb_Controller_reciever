@@ -3,10 +3,10 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 android {
-    namespace 'com.tiltgamepad.receiver'
+    namespace 'com.tiltsteering.receiver'
     compileSdk 34
     defaultConfig {
-        applicationId "com.tiltgamepad.receiver"
+        applicationId "com.tiltsteering.receiver"
         minSdk 26
         targetSdk 34
         versionCode 1
