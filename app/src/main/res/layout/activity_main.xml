@@ -6,7 +6,7 @@
     android:padding="24dp"
     android:gravity="center">
 
-    <TextView android:text="⌨️ TILT KEYBOARD"
+    <TextView android:text="🎮 TILT CONTROLLER"
         android:textSize="24sp" android:textStyle="bold"
         android:layout_marginBottom="8dp"
         android:layout_width="wrap_content"
@@ -15,25 +15,24 @@
     <TextView
         android:text="W=Gas  A=Left  D=Right  S=Brake"
         android:textSize="14sp" android:textColor="#555555"
-        android:layout_marginBottom="8dp"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"/>
-
-    <TextView
-        android:text="Samsung se Bluetooth pair karo"
-        android:textSize="12sp" android:textColor="#888888"
         android:layout_marginBottom="32dp"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"/>
 
+    <Button android:id="@+id/btnIME"
+        android:text="1. Select Tilt Keyboard"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="12dp"/>
+
     <Button android:id="@+id/btnStart"
-        android:text="START BT KEYBOARD"
+        android:text="2. Start Controller"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="12dp"/>
 
     <Button android:id="@+id/btnStop"
-        android:text="STOP"
+        android:text="Stop"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginBottom="24dp"/>
