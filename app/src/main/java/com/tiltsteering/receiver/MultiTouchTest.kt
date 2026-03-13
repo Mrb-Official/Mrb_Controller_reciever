@@ -20,9 +20,8 @@ class MultiTouchTest : AccessibilityService() {
         const val GAS_X   = 2192f
         const val GAS_Y   = 850f
         
-        // DEADZONE 1.5 se kam karke 0.1 kar diya taaki halke tilt pe bhi kaam kare
         const val DEADZONE = 0.1f 
-        const val SLIDE    = 60f
+        const val SLIDE    = 60f // Diagonal slide kitna lamba hoga
 
         private var currentTilt = 0f
         private var gasActive   = false
@@ -30,7 +29,6 @@ class MultiTouchTest : AccessibilityService() {
         private val handler     = Handler(Looper.getMainLooper())
 
         fun updateTilt(tilt: Float) {
-            // Ye log hume batayega ki asli value kya aa rahi hai
             Log.d("MULTI_TILT", "Asli Tilt Value: $tilt")
             currentTilt = tilt
             if (!running) startLoop()
@@ -67,23 +65,32 @@ class MultiTouchTest : AccessibilityService() {
         if (tilt > DEADZONE || tilt < -DEADZONE) {
             val factor = (tilt / 10f).coerceIn(-1f, 1f)
 
-            // Left point
+            // DIAGONAL SWIPE LOGIC
+            // Left point (Swipe jaisa / chahiye)
             val leftStartX = LEFT_X
+            val leftStartY = LEFT_Y
             val leftEndX   = LEFT_X + (factor * SLIDE)
+            // Y me minus lagaya taaki diagonal cross bane
+            val leftEndY   = LEFT_Y - (factor * SLIDE) 
+            
             val leftPath = Path().apply {
-                moveTo(leftStartX, LEFT_Y)
-                lineTo(leftEndX, LEFT_Y)
+                moveTo(leftStartX, leftStartY)
+                lineTo(leftEndX, leftEndY)
             }
             builder.addStroke(
                 GestureDescription.StrokeDescription(leftPath, 0L, gestureDuration, false)
             )
 
-            // Right point
+            // Right point (Swipe jaisa \ chahiye)
             val rightStartX = RIGHT_X
+            val rightStartY = RIGHT_Y
             val rightEndX   = RIGHT_X + (factor * SLIDE)
+            // Y me plus lagaya taaki opposite cross bane
+            val rightEndY   = RIGHT_Y + (factor * SLIDE) 
+            
             val rightPath = Path().apply {
-                moveTo(rightStartX, RIGHT_Y)
-                lineTo(rightEndX, RIGHT_Y)
+                moveTo(rightStartX, rightStartY)
+                lineTo(rightEndX, rightEndY)
             }
             builder.addStroke(
                 GestureDescription.StrokeDescription(rightPath, 0L, gestureDuration, false)
