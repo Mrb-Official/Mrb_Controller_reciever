@@ -11,7 +11,6 @@ class MultiTouchTest : AccessibilityService() {
     companion object {
         var instance: MultiTouchTest? = null
 
-        // Tere naye Button Coordinates
         const val LEFT_BTN_X  = 260f
         const val LEFT_BTN_Y  = 700f
         const val RIGHT_BTN_X = 600f
@@ -26,12 +25,13 @@ class MultiTouchTest : AccessibilityService() {
         private var gasActive   = false
         
         private var isGesturing = false
-        
-        // State track karne ke liye: 0 = Koi button nahi, -1 = Left dabaya hai, 1 = Right dabaya hai
         private var activeSteerState = 0 
         
         private var steerStroke: GestureDescription.StrokeDescription? = null
         private var gasStroke: GestureDescription.StrokeDescription? = null
+        
+        // Exact last position track karne ke liye variables (Hold tutne se bachane ke liye)
+        private var currentSteerX = 0f
         private var currentGasY = GAS_Y
 
         fun updateTilt(tilt: Float) {
@@ -60,7 +60,6 @@ class MultiTouchTest : AccessibilityService() {
         val builder = GestureDescription.Builder()
         val duration = 40L 
         
-        // Faisla karte hain ki kaunsa button dabana hai (-1 left ke liye, 1 right ke liye, 0 dono nahi)
         val desiredSteerState = if (tilt < -DEADZONE) -1 else if (tilt > DEADZONE) 1 else 0
         val needsGas = gasActive
         
@@ -74,46 +73,52 @@ class MultiTouchTest : AccessibilityService() {
 
         // --- BUTTON HOLD LOGIC (LEFT ya RIGHT) ---
         if (desiredSteerState != 0) {
-            val targetX = if (desiredSteerState == -1) LEFT_BTN_X else RIGHT_BTN_X
-            val targetY = if (desiredSteerState == -1) LEFT_BTN_Y else RIGHT_BTN_Y
+            val baseTargetX = if (desiredSteerState == -1) LEFT_BTN_X else RIGHT_BTN_X
+            val baseTargetY = if (desiredSteerState == -1) LEFT_BTN_Y else RIGHT_BTN_Y
 
             val sPath = Path()
             
-            // Agar pehla touch hai, YA FIR state change hui hai (jaise Left se direct Right tilt kiya)
             if (isFirst || steerStroke == null || activeSteerState != desiredSteerState) {
-                sPath.moveTo(targetX, targetY)
-                sPath.lineTo(targetX + 1f, targetY) // Valid touch ke liye 1 pixel ka jump
+                // Naya button press
+                currentSteerX = baseTargetX
+                sPath.moveTo(currentSteerX, baseTargetY)
+                currentSteerX += 1f // 1 pixel aage badhao
+                sPath.lineTo(currentSteerX, baseTargetY)
                 steerStroke = GestureDescription.StrokeDescription(sPath, 0L, duration, true)
             } else {
-                // Same button ko hold karke rakho
-                sPath.moveTo(targetX, targetY)
-                sPath.lineTo(targetX + 1f, targetY)
+                // Continue Hold: Purani jagah se start karo (Taaki ungli na uthe)
+                sPath.moveTo(currentSteerX, baseTargetY)
+                // Wapas base pe aao ya 1 pixel aage jao (Vibrate by 1 pixel)
+                currentSteerX = if (currentSteerX == baseTargetX) baseTargetX + 1f else baseTargetX
+                sPath.lineTo(currentSteerX, baseTargetY)
                 steerStroke = steerStroke!!.continueStroke(sPath, 0L, duration, true)
             }
             
             builder.addStroke(steerStroke!!)
-            activeSteerState = desiredSteerState // Nayi state save kar lo
+            activeSteerState = desiredSteerState 
             hasStroke = true
         } else {
             steerStroke = null
             activeSteerState = 0
         }
 
-        // --- GAS LOGIC ---
+        // --- GAS LOGIC (Hold) ---
         if (needsGas) {
-            val targetGasY = if (currentGasY == GAS_Y) GAS_Y + 1f else GAS_Y
             val gPath = Path()
             if (isFirst || gasStroke == null) {
-                gPath.moveTo(GAS_X, GAS_Y)
-                gPath.lineTo(GAS_X, targetGasY)
+                currentGasY = GAS_Y
+                gPath.moveTo(GAS_X, currentGasY)
+                currentGasY += 1f 
+                gPath.lineTo(GAS_X, currentGasY)
                 gasStroke = GestureDescription.StrokeDescription(gPath, 0L, duration, true)
             } else {
+                // Continue Hold
                 gPath.moveTo(GAS_X, currentGasY)
-                gPath.lineTo(GAS_X, targetGasY)
+                currentGasY = if (currentGasY == GAS_Y) GAS_Y + 1f else GAS_Y
+                gPath.lineTo(GAS_X, currentGasY)
                 gasStroke = gasStroke!!.continueStroke(gPath, 0L, duration, true)
             }
             builder.addStroke(gasStroke!!)
-            currentGasY = targetGasY
             hasStroke = true
         } else {
             gasStroke = null
@@ -146,6 +151,7 @@ class MultiTouchTest : AccessibilityService() {
     private fun resetStates() {
         steerStroke = null; gasStroke = null
         activeSteerState = 0
+        currentSteerX = 0f
         currentGasY = GAS_Y
     }
 
