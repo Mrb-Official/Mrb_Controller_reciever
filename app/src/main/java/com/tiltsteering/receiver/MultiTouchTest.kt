@@ -57,6 +57,7 @@ class MultiTouchTest : AccessibilityService() {
         val tilt = currentTilt
         val builder = GestureDescription.Builder()
         var hasStroke = false
+        val gestureDuration = 80L
 
         if (tilt > DEADZONE || tilt < -DEADZONE) {
             val factor = (tilt / 10f).coerceIn(-1f, 1f)
@@ -69,7 +70,7 @@ class MultiTouchTest : AccessibilityService() {
                 lineTo(leftEndX, LEFT_Y)
             }
             builder.addStroke(
-                GestureDescription.StrokeDescription(leftPath, 0L, 200L, true)
+                GestureDescription.StrokeDescription(leftPath, 0L, gestureDuration, false)
             )
 
             // Right point swipes in direction of turn
@@ -80,7 +81,7 @@ class MultiTouchTest : AccessibilityService() {
                 lineTo(rightEndX, RIGHT_Y)
             }
             builder.addStroke(
-                GestureDescription.StrokeDescription(rightPath, 0L, 200L, true)
+                GestureDescription.StrokeDescription(rightPath, 0L, gestureDuration, false)
             )
 
             hasStroke = true
@@ -89,10 +90,10 @@ class MultiTouchTest : AccessibilityService() {
         if (gasActive) {
             val gasPath = Path().apply {
                 moveTo(GAS_X, GAS_Y)
-                lineTo(GAS_X, GAS_Y)
+                lineTo(GAS_X + 1f, GAS_Y) 
             }
             builder.addStroke(
-                GestureDescription.StrokeDescription(gasPath, 0L, 200L, true)
+                GestureDescription.StrokeDescription(gasPath, 0L, gestureDuration, false)
             )
             hasStroke = true
         }
