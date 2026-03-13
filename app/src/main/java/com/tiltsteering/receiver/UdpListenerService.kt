@@ -51,8 +51,9 @@ class UdpListenerService : Service() {
             }
             msg == "GAS:ON"  -> { gasOn = true;  MultiTouchTest.setGas(true) }
             msg == "GAS:OFF" -> { gasOn = false; MultiTouchTest.setGas(false) }
-            msg == "BRK:ON"  -> { brakeOn = true }
-            msg == "BRK:OFF" -> { brakeOn = false }
+            // YAHI THI MISSING WIRE! Ab ye seedha touch wale code ko command dega 👇
+            msg == "BRK:ON"  -> { brakeOn = true;  MultiTouchTest.setBrake(true) }
+            msg == "BRK:OFF" -> { brakeOn = false; MultiTouchTest.setBrake(false) }
             msg == "RACE:ON"  -> { gasOn = true;  MultiTouchTest.setGas(true) }
             msg == "RACE:OFF" -> { gasOn = false; MultiTouchTest.setGas(false) }
         }
