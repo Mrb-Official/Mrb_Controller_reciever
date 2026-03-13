@@ -11,28 +11,27 @@ class MultiTouchTest : AccessibilityService() {
     companion object {
         var instance: MultiTouchTest? = null
 
-        const val LEFT_X  = 235f
-        const val LEFT_Y  = 720f
-        const val RIGHT_X = 587f
-        const val RIGHT_Y = 738f
-        const val GAS_X   = 2192f
-        const val GAS_Y   = 850f
+        // Steering Wheel ka Center aur Radius (Tere purane points ke hisaab se set kiya hai)
+        const val STEER_CENTER_X = 411f 
+        const val STEER_CENTER_Y = 729f 
+        const val WHEEL_RADIUS   = 175f 
+        
+        const val GAS_X = 2192f
+        const val GAS_Y = 850f
         
         const val DEADZONE = 0.1f 
-        const val MAX_RADIUS = 120f 
 
         private var currentTilt = 0f
         private var gasActive   = false
         
         private var isGesturing = false
-        private var currentLeftX = LEFT_X
-        private var currentLeftY = LEFT_Y
-        private var currentRightX = RIGHT_X
-        private var currentRightY = RIGHT_Y
+        
+        // Single pointer tracking variables
+        private var currentSteerX = STEER_CENTER_X
+        private var currentSteerY = STEER_CENTER_Y - WHEEL_RADIUS
         private var currentGasY = GAS_Y
         
-        private var leftStroke: GestureDescription.StrokeDescription? = null
-        private var rightStroke: GestureDescription.StrokeDescription? = null
+        private var steerStroke: GestureDescription.StrokeDescription? = null
         private var gasStroke: GestureDescription.StrokeDescription? = null
 
         fun updateTilt(tilt: Float) {
@@ -72,53 +71,56 @@ class MultiTouchTest : AccessibilityService() {
 
         var hasStroke = false
 
+        // --- SINGLE POINTER CIRCULAR STEERING LOGIC ---
         if (needsSteering) {
-            val targetLeftX = LEFT_X + (tilt * MAX_RADIUS)
-            val targetLeftY = LEFT_Y - (tilt * MAX_RADIUS)
+            // Tilt ko -1 se 1 ke beech me limit karte hain (assume max tilt is ~10)
+            val factor = (tilt / 10f).coerceIn(-1f, 1f)
             
-            val targetRightX = RIGHT_X - (tilt * MAX_RADIUS)
-            val targetRightY = RIGHT_Y + (tilt * MAX_RADIUS)
+            // Angle calculate karna (Top = -90 degrees, Left = -180, Right = 0)
+            // 100 degrees left aur 100 degrees right ghumne ki limit
+            val angleDegrees = -90.0 + (factor * 100.0)
+            val angleRad = Math.toRadians(angleDegrees)
 
-            val lPath = Path().apply { moveTo(currentLeftX, currentLeftY); lineTo(targetLeftX, targetLeftY) }
-            leftStroke = if (isFirst || leftStroke == null) {
-                GestureDescription.StrokeDescription(lPath, 0L, duration, true)
-            } else {
-                // YAHAN FIX KIYA HAI: Baaki parameters bhi pass kiye
-                leftStroke!!.continueStroke(lPath, 0L, duration, true)
-            }
-            builder.addStroke(leftStroke!!)
-            currentLeftX = targetLeftX
-            currentLeftY = targetLeftY
+            // Circle ke circumference (border) par naya X aur Y nikalna
+            val targetX = STEER_CENTER_X + (WHEEL_RADIUS * Math.cos(angleRad)).toFloat()
+            val targetY = STEER_CENTER_Y + (WHEEL_RADIUS * Math.sin(angleRad)).toFloat()
 
-            val rPath = Path().apply { moveTo(currentRightX, currentRightY); lineTo(targetRightX, targetRightY) }
-            rightStroke = if (isFirst || rightStroke == null) {
-                GestureDescription.StrokeDescription(rPath, 0L, duration, true)
-            } else {
-                // YAHAN FIX KIYA HAI
-                rightStroke!!.continueStroke(rPath, 0L, duration, true)
-            }
-            builder.addStroke(rightStroke!!)
-            currentRightX = targetRightX
-            currentRightY = targetRightY
+            val sPath = Path()
             
+            if (isFirst || steerStroke == null) {
+                // Pehli baar touch seedha target par rakho
+                currentSteerX = targetX
+                currentSteerY = targetY
+                sPath.moveTo(currentSteerX, currentSteerY)
+                sPath.lineTo(currentSteerX + 1f, currentSteerY) // 1 pixel ka jump valid gesture ke liye
+                steerStroke = GestureDescription.StrokeDescription(sPath, 0L, duration, true)
+            } else {
+                // Ungli ko purani jagah se nayi jagah arc me khiskao
+                sPath.moveTo(currentSteerX, currentSteerY)
+                sPath.lineTo(targetX, targetY)
+                currentSteerX = targetX
+                currentSteerY = targetY
+                steerStroke = steerStroke!!.continueStroke(sPath, 0L, duration, true)
+            }
+            
+            builder.addStroke(steerStroke!!)
             hasStroke = true
         } else {
-            leftStroke = null
-            rightStroke = null
-            currentLeftX = LEFT_X
-            currentLeftY = LEFT_Y
-            currentRightX = RIGHT_X
-            currentRightY = RIGHT_Y
+            steerStroke = null
         }
 
+        // --- GAS LOGIC ---
         if (needsGas) {
             val targetGasY = if (currentGasY == GAS_Y) GAS_Y + 1f else GAS_Y
-            val gPath = Path().apply { moveTo(GAS_X, currentGasY); lineTo(GAS_X, targetGasY) }
-            gasStroke = if (isFirst || gasStroke == null) {
-                GestureDescription.StrokeDescription(gPath, 0L, duration, true)
+            val gPath = Path()
+            if (isFirst || gasStroke == null) {
+                gPath.moveTo(GAS_X, GAS_Y)
+                gPath.lineTo(GAS_X, targetGasY)
+                gasStroke = GestureDescription.StrokeDescription(gPath, 0L, duration, true)
             } else {
-                // YAHAN FIX KIYA HAI
-                gasStroke!!.continueStroke(gPath, 0L, duration, true)
+                gPath.moveTo(GAS_X, currentGasY)
+                gPath.lineTo(GAS_X, targetGasY)
+                gasStroke = gasStroke!!.continueStroke(gPath, 0L, duration, true)
             }
             builder.addStroke(gasStroke!!)
             currentGasY = targetGasY
@@ -152,9 +154,8 @@ class MultiTouchTest : AccessibilityService() {
     }
     
     private fun resetStates() {
-        leftStroke = null; rightStroke = null; gasStroke = null
-        currentLeftX = LEFT_X; currentLeftY = LEFT_Y
-        currentRightX = RIGHT_X; currentRightY = RIGHT_Y; currentGasY = GAS_Y
+        steerStroke = null; gasStroke = null
+        currentGasY = GAS_Y
     }
 
     override fun onServiceConnected() { instance = this }
