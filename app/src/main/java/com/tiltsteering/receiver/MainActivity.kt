@@ -15,38 +15,31 @@ class SteeringWheelView @JvmOverloads constructor(
 ) : View(context, attrs) {
     var tiltValue: Float = 0f
         set(value) { field = value; invalidate() }
-    private val paintRing = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FF6600"); style = Paint.Style.STROKE; strokeWidth = 18f }
-    private val paintSpoke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#888888"); style = Paint.Style.STROKE; strokeWidth = 10f }
-    private val paintCenter = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FF6600"); style = Paint.Style.STROKE; strokeWidth = 8f }
-    private val paintArc = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.parseColor("#FF6600"); style = Paint.Style.STROKE; strokeWidth = 14f
-        alpha = 120 }
-    private val paintDot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.WHITE; style = Paint.Style.FILL }
+
+    private val paintRing   = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 8f }
+    private val paintSpoke  = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(60,255,255,255); style = Paint.Style.STROKE; strokeWidth = 6f }
+    private val paintCenter = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.STROKE; strokeWidth = 4f }
+    private val paintArc    = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(80,255,255,255); style = Paint.Style.STROKE; strokeWidth = 6f }
+    private val paintDot    = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.WHITE; style = Paint.Style.FILL }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val cx = width / 2f; val cy = height / 2f
-        val r  = (minOf(width, height) / 2f) - 20f
+        val r  = (minOf(width, height) / 2f) - 8f
         val angle = (tiltValue / 10f * 90f).coerceIn(-90f, 90f)
         canvas.drawCircle(cx, cy, r, paintRing)
-        canvas.drawCircle(cx, cy, r * 0.38f, paintCenter)
-        val arcRect = RectF(cx - r * 0.7f, cy - r * 0.7f, cx + r * 0.7f, cy + r * 0.7f)
+        canvas.drawCircle(cx, cy, r * 0.28f, paintCenter)
+        val arcRect = RectF(cx - r*0.6f, cy - r*0.6f, cx + r*0.6f, cy + r*0.6f)
         canvas.drawArc(arcRect, -90f, -angle, false, paintArc)
         canvas.save()
         canvas.rotate(-angle, cx, cy)
         for (i in 0..2) {
             val a = Math.toRadians((i * 120.0 - 90.0))
             canvas.drawLine(
-                cx + (r * 0.38f * Math.cos(a)).toFloat(),
-                cy + (r * 0.38f * Math.sin(a)).toFloat(),
-                cx + (r * Math.cos(a)).toFloat(),
-                cy + (r * Math.sin(a)).toFloat(), paintSpoke)
+                cx + (r*0.28f* Math.cos(a)).toFloat(), cy + (r*0.28f*Math.sin(a)).toFloat(),
+                cx + (r*Math.cos(a)).toFloat(),        cy + (r*Math.sin(a)).toFloat(), paintSpoke)
         }
-        canvas.drawCircle(cx, cy - r + 20f, 10f, paintDot)
+        canvas.drawCircle(cx, cy - r + 8f, 5f, paintDot)
         canvas.restore()
     }
 }
@@ -56,38 +49,37 @@ class MainActivity : AppCompatActivity() {
     private lateinit var tvTilt: TextView
     private lateinit var tvPackets: TextView
     private lateinit var wheelView: SteeringWheelView
-    private lateinit var btnGas: Button
     private val handler = Handler(Looper.getMainLooper())
 
     private val update = object : Runnable {
         override fun run() {
             val tilt = UdpListenerService.lastTilt.toFloatOrNull() ?: 0f
             wheelView.tiltValue = tilt
-            tvTilt.text    = "Tilt: ${"%.2f".format(tilt)}"
-            tvPackets.text = "Packets: ${UdpListenerService.packetCount}"
-            tvStatus.text  = if (MultiTouchTest.instance != null) "Accessibility: ✅ ON" else "Accessibility: ❌ OFF"
+            tvTilt.text    = "%.2f".format(tilt)
+            tvPackets.text = "PKT: ${UdpListenerService.packetCount}"
+            tvStatus.text  = if (MultiTouchTest.instance != null) "● ACTIVE" else "○ OFF"
+            tvStatus.setTextColor(
+                if (MultiTouchTest.instance != null)
+                    Color.argb(255,0,255,100)
+                else Color.argb(255,80,80,80))
             handler.postDelayed(this, 50)
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.decorView.setBackgroundColor(Color.parseColor("#0A0A0A"))
         setContentView(R.layout.activity_main)
         tvStatus  = findViewById(R.id.tvStatus)
         tvTilt    = findViewById(R.id.tvTilt)
         tvPackets = findViewById(R.id.tvPackets)
         wheelView = findViewById(R.id.wheelView)
-        btnGas    = findViewById(R.id.btnGas)
         startForegroundService(Intent(this, UdpListenerService::class.java))
         findViewById<Button>(R.id.btnAccessibility).setOnClickListener {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
-        btnGas.setOnTouchListener { _, event ->
-            when (event.action) {
-                MotionEvent.ACTION_DOWN -> { MultiTouchTest.setGas(true); btnGas.setBackgroundColor(Color.parseColor("#FF4444")) }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> { MultiTouchTest.setGas(false); btnGas.setBackgroundColor(Color.parseColor("#44AA44")) }
-            }
-            true
+        findViewById<Button>(R.id.btnSettings).setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java))
         }
         handler.post(update)
     }
