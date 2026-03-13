@@ -16,12 +16,10 @@ class MultiTouchTest : AccessibilityService() {
         const val LEFT_Y  = 720f
         const val RIGHT_X = 587f
         const val RIGHT_Y = 738f
-        const val SLIDE   = 80f
         const val GAS_X   = 2192f
         const val GAS_Y   = 850f
-
-        // Deadzone = 1.5 = Real tilt tabhi count hoga
         const val DEADZONE = 1.5f
+        const val SLIDE    = 60f
 
         private var currentTilt = 0f
         private var gasActive   = false
@@ -44,7 +42,7 @@ class MultiTouchTest : AccessibilityService() {
                 override fun run() {
                     if (!running) return
                     instance?.doGesture()
-                    handler.postDelayed(this, 80L)
+                    handler.postDelayed(this, 100L)
                 }
             })
         }
@@ -60,40 +58,41 @@ class MultiTouchTest : AccessibilityService() {
         val builder = GestureDescription.Builder()
         var hasStroke = false
 
-        // Tilt outside deadzone = Dono points active
         if (tilt > DEADZONE || tilt < -DEADZONE) {
-            val factor = tilt / 10f  // -1.0 to +1.0
+            val factor = (tilt / 10f).coerceIn(-1f, 1f)
 
-            val leftX  = LEFT_X  - (factor * SLIDE)
-            val rightX = RIGHT_X + (factor * SLIDE)
-
+            // Left point swipes in direction of turn
+            val leftStartX = LEFT_X
+            val leftEndX   = LEFT_X + (factor * SLIDE)
             val leftPath = Path().apply {
-                moveTo(leftX, LEFT_Y)
-                lineTo(leftX, LEFT_Y)
+                moveTo(leftStartX, LEFT_Y)
+                lineTo(leftEndX, LEFT_Y)
             }
             builder.addStroke(
-                GestureDescription.StrokeDescription(leftPath, 0L, 100L, true)
+                GestureDescription.StrokeDescription(leftPath, 0L, 200L, true)
             )
 
+            // Right point swipes in direction of turn
+            val rightStartX = RIGHT_X
+            val rightEndX   = RIGHT_X + (factor * SLIDE)
             val rightPath = Path().apply {
-                moveTo(rightX, RIGHT_Y)
-                lineTo(rightX, RIGHT_Y)
+                moveTo(rightStartX, RIGHT_Y)
+                lineTo(rightEndX, RIGHT_Y)
             }
             builder.addStroke(
-                GestureDescription.StrokeDescription(rightPath, 0L, 100L, true)
+                GestureDescription.StrokeDescription(rightPath, 0L, 200L, true)
             )
 
             hasStroke = true
         }
 
-        // Gas always separate
         if (gasActive) {
             val gasPath = Path().apply {
                 moveTo(GAS_X, GAS_Y)
                 lineTo(GAS_X, GAS_Y)
             }
             builder.addStroke(
-                GestureDescription.StrokeDescription(gasPath, 0L, 100L, true)
+                GestureDescription.StrokeDescription(gasPath, 0L, 200L, true)
             )
             hasStroke = true
         }
