@@ -16,20 +16,18 @@ class UdpListenerService : Service() {
         var brakeOn     = false
     }
 
-    private val scope   = CoroutineScope(Dispatchers.IO + SupervisorJob())
-    private var socket  : DatagramSocket? = null
+    private val scope  = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    private var socket : DatagramSocket? = null
     private var running = false
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         createChannel()
         startForeground(1, buildNotification())
         running = true
-
         scope.launch {
             try {
                 socket = DatagramSocket(9876)
                 val buf = ByteArray(64)
-                Log.d("UDP", "Listening on 9876")
                 while (running) {
                     val pkt = DatagramPacket(buf, buf.size)
                     socket?.receive(pkt)
@@ -49,21 +47,20 @@ class UdpListenerService : Service() {
             msg.startsWith("STEER:") -> {
                 val v = msg.removePrefix("STEER:").toFloatOrNull() ?: return
                 lastTilt = v.toString()
-                TouchInjector.updateSteering(v)
+                MultiTouchTest.updateTilt(v)
             }
-            msg == "GAS:ON"   -> { gasOn = true;  TouchInjector.setAccel(true) }
-            msg == "GAS:OFF"  -> { gasOn = false; TouchInjector.setAccel(false) }
-            msg == "BRK:ON"   -> { brakeOn = true }
-            msg == "BRK:OFF"  -> { brakeOn = false }
-            msg == "RACE:ON"  -> { gasOn = true;  TouchInjector.setAccel(true) }
-            msg == "RACE:OFF" -> { gasOn = false; TouchInjector.setAccel(false) }
+            msg == "GAS:ON"  -> { gasOn = true;  MultiTouchTest.setGas(true) }
+            msg == "GAS:OFF" -> { gasOn = false; MultiTouchTest.setGas(false) }
+            msg == "BRK:ON"  -> { brakeOn = true }
+            msg == "BRK:OFF" -> { brakeOn = false }
+            msg == "RACE:ON"  -> { gasOn = true;  MultiTouchTest.setGas(true) }
+            msg == "RACE:OFF" -> { gasOn = false; MultiTouchTest.setGas(false) }
         }
     }
 
     override fun onDestroy() {
         running = false
         scope.cancel()
-        TouchInjector.release()
         try { socket?.close() } catch (e: Exception) {}
         super.onDestroy()
     }

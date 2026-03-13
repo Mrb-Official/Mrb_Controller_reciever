@@ -11,49 +11,86 @@ class MultiTouchTest : AccessibilityService() {
 
     companion object {
         var instance: MultiTouchTest? = null
+        var steerX = 300f
+        var steerY = 750f
+        var gasX   = 2192f
+        var gasY   = 850f
+        const val MAX_OFFSET = 150f
+        const val DEADZONE   = 0.3f
+
+        private var currentTilt = 0f
+        private var gasActive   = false
+        private var running     = false
+        private val handler     = Handler(Looper.getMainLooper())
+
+        fun updateTilt(tilt: Float) {
+            currentTilt = tilt
+            if (!running) {
+                running = true
+                startLoop()
+            }
+        }
+
+        fun setGas(on: Boolean) {
+            gasActive = on
+            if (!running) {
+                running = true
+                startLoop()
+            }
+        }
 
         fun testMultiTouch() {
-            val svc = instance ?: return
-            val handler = Handler(Looper.getMainLooper())
-            handler.post { svc.doMultiTouch() }
+            currentTilt = 5f
+            gasActive = true
+            running = true
+            startLoop()
+        }
+
+        private fun startLoop() {
+            handler.post(object : Runnable {
+                override fun run() {
+                    if (!running) return
+                    instance?.doGesture()
+                    handler.postDelayed(this, 16L)
+                }
+            })
         }
     }
 
-    private fun doMultiTouch() {
-        // Path 1 - Left finger
-        val path1 = Path().apply {
-            moveTo(300f, 750f)
-            lineTo(300f, 750f)
+    private fun doGesture() {
+        val tilt   = currentTilt
+        val offset = when {
+            tilt > DEADZONE  -> -(tilt / 10f * MAX_OFFSET)
+            tilt < -DEADZONE ->  (-tilt / 10f * MAX_OFFSET)
+            else             -> 0f
         }
 
-        // Path 2 - Right finger  
-        val path2 = Path().apply {
-            moveTo(900f, 750f)
-            lineTo(900f, 750f)
+        val tx = steerX + offset
+        val ty = steerY
+
+        val builder = GestureDescription.Builder()
+
+        // Steering stroke
+        val steerPath = Path().apply {
+            moveTo(tx, ty)
+            lineTo(tx, ty)
+        }
+        builder.addStroke(
+            GestureDescription.StrokeDescription(steerPath, 0L, 80L, true)
+        )
+
+        // Gas stroke — same startTime = 0L = Multitouch!
+        if (gasActive) {
+            val gasPath = Path().apply {
+                moveTo(gasX, gasY)
+                lineTo(gasX, gasY)
+            }
+            builder.addStroke(
+                GestureDescription.StrokeDescription(gasPath, 0L, 80L, true)
+            )
         }
 
-        // SAME startTime = 0L = Simultaneous ✅
-        val stroke1 = GestureDescription.StrokeDescription(
-            path1, 0L, 2000L
-        )
-        val stroke2 = GestureDescription.StrokeDescription(
-            path2, 0L, 2000L
-        )
-
-        // EK HI BUILDER = Multitouch ✅
-        val gesture = GestureDescription.Builder()
-            .addStroke(stroke1)
-            .addStroke(stroke2)
-            .build()
-
-        dispatchGesture(gesture, object : GestureResultCallback() {
-            override fun onCompleted(g: GestureDescription) {
-                android.util.Log.d("MULTI", "✅ Gesture completed!")
-            }
-            override fun onCancelled(g: GestureDescription) {
-                android.util.Log.d("MULTI", "❌ Gesture cancelled!")
-            }
-        }, Handler(Looper.getMainLooper()))
+        dispatchGesture(builder.build(), null, handler)
     }
 
     override fun onServiceConnected() {
@@ -64,6 +101,7 @@ class MultiTouchTest : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {}
     override fun onInterrupt() {}
     override fun onDestroy() {
+        running = false
         instance = null
         super.onDestroy()
     }
