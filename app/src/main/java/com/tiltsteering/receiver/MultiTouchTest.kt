@@ -11,12 +11,11 @@ class MultiTouchTest : AccessibilityService() {
     companion object {
         var instance: MultiTouchTest? = null
 
-        // Naya Pointer Position jo tune bataya (X lock rahega, Y center hai)
-        const val STEER_X = 570f 
-        const val STEER_BASE_Y = 750f 
-        
-        // Pura screen cover karne ke liye lamba slide (400 pixels upar aur neeche)
-        const val MAX_SLIDE_Y = 400f 
+        // Tere naye Button Coordinates
+        const val LEFT_BTN_X  = 260f
+        const val LEFT_BTN_Y  = 700f
+        const val RIGHT_BTN_X = 600f
+        const val RIGHT_BTN_Y = 700f
         
         const val GAS_X = 2192f
         const val GAS_Y = 850f
@@ -28,12 +27,12 @@ class MultiTouchTest : AccessibilityService() {
         
         private var isGesturing = false
         
-        // Tracking Y position taaki smooth slide ho sake
-        private var currentSteerY = STEER_BASE_Y
-        private var currentGasY = GAS_Y
+        // State track karne ke liye: 0 = Koi button nahi, -1 = Left dabaya hai, 1 = Right dabaya hai
+        private var activeSteerState = 0 
         
         private var steerStroke: GestureDescription.StrokeDescription? = null
         private var gasStroke: GestureDescription.StrokeDescription? = null
+        private var currentGasY = GAS_Y
 
         fun updateTilt(tilt: Float) {
             currentTilt = tilt
@@ -61,10 +60,11 @@ class MultiTouchTest : AccessibilityService() {
         val builder = GestureDescription.Builder()
         val duration = 40L 
         
-        val needsSteering = Math.abs(tilt) > DEADZONE
+        // Faisla karte hain ki kaunsa button dabana hai (-1 left ke liye, 1 right ke liye, 0 dono nahi)
+        val desiredSteerState = if (tilt < -DEADZONE) -1 else if (tilt > DEADZONE) 1 else 0
         val needsGas = gasActive
         
-        if (!needsSteering && !needsGas) {
+        if (desiredSteerState == 0 && !needsGas) {
             isGesturing = false
             resetStates()
             return
@@ -72,35 +72,31 @@ class MultiTouchTest : AccessibilityService() {
 
         var hasStroke = false
 
-        // --- VERTICAL SLIDE (Straight Line Upar-Neeche) LOGIC ---
-        if (needsSteering) {
-            // Tilt ko limit kiya
-            val factor = (tilt / 10f).coerceIn(-1f, 1f)
-            
-            // X constant (570) rahega, sirf Y change hoga
-            // Factor ke hisaab se target Y nikalenge
-            val targetY = STEER_BASE_Y + (factor * MAX_SLIDE_Y)
+        // --- BUTTON HOLD LOGIC (LEFT ya RIGHT) ---
+        if (desiredSteerState != 0) {
+            val targetX = if (desiredSteerState == -1) LEFT_BTN_X else RIGHT_BTN_X
+            val targetY = if (desiredSteerState == -1) LEFT_BTN_Y else RIGHT_BTN_Y
 
             val sPath = Path()
             
-            if (isFirst || steerStroke == null) {
-                // Pehla touch: Seedha exact position par start karo
-                currentSteerY = targetY
-                sPath.moveTo(STEER_X, currentSteerY)
-                sPath.lineTo(STEER_X, currentSteerY + 1f) // 1 pixel validation ke liye
+            // Agar pehla touch hai, YA FIR state change hui hai (jaise Left se direct Right tilt kiya)
+            if (isFirst || steerStroke == null || activeSteerState != desiredSteerState) {
+                sPath.moveTo(targetX, targetY)
+                sPath.lineTo(targetX + 1f, targetY) // Valid touch ke liye 1 pixel ka jump
                 steerStroke = GestureDescription.StrokeDescription(sPath, 0L, duration, true)
             } else {
-                // Hold karke smooth khiskana purani Y se nayi Y tak
-                sPath.moveTo(STEER_X, currentSteerY)
-                sPath.lineTo(STEER_X, targetY)
-                currentSteerY = targetY
+                // Same button ko hold karke rakho
+                sPath.moveTo(targetX, targetY)
+                sPath.lineTo(targetX + 1f, targetY)
                 steerStroke = steerStroke!!.continueStroke(sPath, 0L, duration, true)
             }
             
             builder.addStroke(steerStroke!!)
+            activeSteerState = desiredSteerState // Nayi state save kar lo
             hasStroke = true
         } else {
             steerStroke = null
+            activeSteerState = 0
         }
 
         // --- GAS LOGIC ---
@@ -149,7 +145,7 @@ class MultiTouchTest : AccessibilityService() {
     
     private fun resetStates() {
         steerStroke = null; gasStroke = null
-        currentSteerY = STEER_BASE_Y
+        activeSteerState = 0
         currentGasY = GAS_Y
     }
 
