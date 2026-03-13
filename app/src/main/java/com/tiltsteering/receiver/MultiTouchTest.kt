@@ -11,10 +11,12 @@ class MultiTouchTest : AccessibilityService() {
     companion object {
         var instance: MultiTouchTest? = null
 
-        // Steering Wheel ka Center aur Radius (Tere purane points ke hisaab se set kiya hai)
-        const val STEER_CENTER_X = 411f 
-        const val STEER_CENTER_Y = 729f 
-        const val WHEEL_RADIUS   = 175f 
+        // Naya Pointer Position jo tune bataya (X lock rahega, Y center hai)
+        const val STEER_X = 570f 
+        const val STEER_BASE_Y = 750f 
+        
+        // Pura screen cover karne ke liye lamba slide (400 pixels upar aur neeche)
+        const val MAX_SLIDE_Y = 400f 
         
         const val GAS_X = 2192f
         const val GAS_Y = 850f
@@ -26,9 +28,8 @@ class MultiTouchTest : AccessibilityService() {
         
         private var isGesturing = false
         
-        // Single pointer tracking variables
-        private var currentSteerX = STEER_CENTER_X
-        private var currentSteerY = STEER_CENTER_Y - WHEEL_RADIUS
+        // Tracking Y position taaki smooth slide ho sake
+        private var currentSteerY = STEER_BASE_Y
         private var currentGasY = GAS_Y
         
         private var steerStroke: GestureDescription.StrokeDescription? = null
@@ -71,34 +72,27 @@ class MultiTouchTest : AccessibilityService() {
 
         var hasStroke = false
 
-        // --- SINGLE POINTER CIRCULAR STEERING LOGIC ---
+        // --- VERTICAL SLIDE (Straight Line Upar-Neeche) LOGIC ---
         if (needsSteering) {
-            // Tilt ko -1 se 1 ke beech me limit karte hain (assume max tilt is ~10)
+            // Tilt ko limit kiya
             val factor = (tilt / 10f).coerceIn(-1f, 1f)
             
-            // Angle calculate karna (Top = -90 degrees, Left = -180, Right = 0)
-            // 100 degrees left aur 100 degrees right ghumne ki limit
-            val angleDegrees = -90.0 + (factor * 100.0)
-            val angleRad = Math.toRadians(angleDegrees)
-
-            // Circle ke circumference (border) par naya X aur Y nikalna
-            val targetX = STEER_CENTER_X + (WHEEL_RADIUS * Math.cos(angleRad)).toFloat()
-            val targetY = STEER_CENTER_Y + (WHEEL_RADIUS * Math.sin(angleRad)).toFloat()
+            // X constant (570) rahega, sirf Y change hoga
+            // Factor ke hisaab se target Y nikalenge
+            val targetY = STEER_BASE_Y + (factor * MAX_SLIDE_Y)
 
             val sPath = Path()
             
             if (isFirst || steerStroke == null) {
-                // Pehli baar touch seedha target par rakho
-                currentSteerX = targetX
+                // Pehla touch: Seedha exact position par start karo
                 currentSteerY = targetY
-                sPath.moveTo(currentSteerX, currentSteerY)
-                sPath.lineTo(currentSteerX + 1f, currentSteerY) // 1 pixel ka jump valid gesture ke liye
+                sPath.moveTo(STEER_X, currentSteerY)
+                sPath.lineTo(STEER_X, currentSteerY + 1f) // 1 pixel validation ke liye
                 steerStroke = GestureDescription.StrokeDescription(sPath, 0L, duration, true)
             } else {
-                // Ungli ko purani jagah se nayi jagah arc me khiskao
-                sPath.moveTo(currentSteerX, currentSteerY)
-                sPath.lineTo(targetX, targetY)
-                currentSteerX = targetX
+                // Hold karke smooth khiskana purani Y se nayi Y tak
+                sPath.moveTo(STEER_X, currentSteerY)
+                sPath.lineTo(STEER_X, targetY)
                 currentSteerY = targetY
                 steerStroke = steerStroke!!.continueStroke(sPath, 0L, duration, true)
             }
@@ -155,6 +149,7 @@ class MultiTouchTest : AccessibilityService() {
     
     private fun resetStates() {
         steerStroke = null; gasStroke = null
+        currentSteerY = STEER_BASE_Y
         currentGasY = GAS_Y
     }
 
