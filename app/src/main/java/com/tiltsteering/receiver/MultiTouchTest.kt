@@ -5,6 +5,7 @@ import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.view.accessibility.AccessibilityEvent
 
 class MultiTouchTest : AccessibilityService() {
@@ -18,7 +19,9 @@ class MultiTouchTest : AccessibilityService() {
         const val RIGHT_Y = 738f
         const val GAS_X   = 2192f
         const val GAS_Y   = 850f
-        const val DEADZONE = 1.5f
+        
+        // DEADZONE 1.5 se kam karke 0.1 kar diya taaki halke tilt pe bhi kaam kare
+        const val DEADZONE = 0.1f 
         const val SLIDE    = 60f
 
         private var currentTilt = 0f
@@ -27,6 +30,8 @@ class MultiTouchTest : AccessibilityService() {
         private val handler     = Handler(Looper.getMainLooper())
 
         fun updateTilt(tilt: Float) {
+            // Ye log hume batayega ki asli value kya aa rahi hai
+            Log.d("MULTI_TILT", "Asli Tilt Value: $tilt")
             currentTilt = tilt
             if (!running) startLoop()
         }
@@ -62,7 +67,7 @@ class MultiTouchTest : AccessibilityService() {
         if (tilt > DEADZONE || tilt < -DEADZONE) {
             val factor = (tilt / 10f).coerceIn(-1f, 1f)
 
-            // Left point swipes in direction of turn
+            // Left point
             val leftStartX = LEFT_X
             val leftEndX   = LEFT_X + (factor * SLIDE)
             val leftPath = Path().apply {
@@ -73,7 +78,7 @@ class MultiTouchTest : AccessibilityService() {
                 GestureDescription.StrokeDescription(leftPath, 0L, gestureDuration, false)
             )
 
-            // Right point swipes in direction of turn
+            // Right point
             val rightStartX = RIGHT_X
             val rightEndX   = RIGHT_X + (factor * SLIDE)
             val rightPath = Path().apply {
@@ -103,7 +108,7 @@ class MultiTouchTest : AccessibilityService() {
         try {
             dispatchGesture(builder.build(), null, handler)
         } catch (e: Exception) {
-            android.util.Log.e("MULTI", e.message ?: "")
+            Log.e("MULTI", e.message ?: "")
         }
     }
 
