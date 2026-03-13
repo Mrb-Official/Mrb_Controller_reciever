@@ -19,7 +19,6 @@ class MultiTouchTest : AccessibilityService() {
         const val GAS_X = 2192f
         const val GAS_Y = 850f
         
-        // Naye Brake Coordinates
         const val BRAKE_X = 1943f
         const val BRAKE_Y = 975f
         
@@ -27,10 +26,12 @@ class MultiTouchTest : AccessibilityService() {
 
         private var currentTilt = 0f
         private var gasActive   = false
-        private var brakeActive = false // Brake ki state
+        private var brakeActive = false 
         
         private var isGesturing = false
+        
         private var activeSteerState = 0 
+        private var lastGestureState = 0 // Multi-touch sync karne ka naya hathiyar!
         
         private var steerStroke: GestureDescription.StrokeDescription? = null
         private var gasStroke: GestureDescription.StrokeDescription? = null
@@ -75,23 +76,37 @@ class MultiTouchTest : AccessibilityService() {
         val needsGas = gasActive
         val needsBrake = brakeActive
         
-        // Agar teeno me se kuch bhi nahi dabana, toh rok do
-        if (desiredSteerState == 0 && !needsGas && !needsBrake) {
+        // Ek unique number banate hain jisse pata chale ki kitne aur kaunse buttons dabe hain
+        val currentGestureState = (if (desiredSteerState != 0) 1 else 0) + 
+                                  (if (needsGas) 2 else 0) + 
+                                  (if (needsBrake) 4 else 0)
+        
+        if (currentGestureState == 0) {
             isGesturing = false
             resetStates()
             return
         }
 
+        // AGAR BUTTONS KA COMBINATION CHANGE HUA HAI (e.g., Gas dabi thi, ab Steer bhi dab gaya)
+        // Toh saare touches ko reset karke ek sath fresh dabao taaki Android overlap na kare!
+        if (currentGestureState != lastGestureState || activeSteerState != desiredSteerState) {
+            steerStroke = null
+            gasStroke = null
+            brakeStroke = null
+            lastGestureState = currentGestureState
+            activeSteerState = desiredSteerState
+        }
+
         var hasStroke = false
 
-        // --- BUTTON HOLD LOGIC (STEERING) ---
+        // --- STEERING (Left/Right) ---
         if (desiredSteerState != 0) {
             val baseTargetX = if (desiredSteerState == -1) LEFT_BTN_X else RIGHT_BTN_X
             val baseTargetY = if (desiredSteerState == -1) LEFT_BTN_Y else RIGHT_BTN_Y
 
             val sPath = Path()
             
-            if (isFirst || steerStroke == null || activeSteerState != desiredSteerState) {
+            if (steerStroke == null) {
                 currentSteerX = baseTargetX
                 sPath.moveTo(currentSteerX, baseTargetY)
                 currentSteerX += 1f 
@@ -103,19 +118,14 @@ class MultiTouchTest : AccessibilityService() {
                 sPath.lineTo(currentSteerX, baseTargetY)
                 steerStroke = steerStroke!!.continueStroke(sPath, 0L, duration, true)
             }
-            
             builder.addStroke(steerStroke!!)
-            activeSteerState = desiredSteerState 
             hasStroke = true
-        } else {
-            steerStroke = null
-            activeSteerState = 0
         }
 
-        // --- GAS LOGIC (Hold) ---
+        // --- GAS ---
         if (needsGas) {
             val gPath = Path()
-            if (isFirst || gasStroke == null) {
+            if (gasStroke == null) {
                 currentGasY = GAS_Y
                 gPath.moveTo(GAS_X, currentGasY)
                 currentGasY += 1f 
@@ -129,15 +139,12 @@ class MultiTouchTest : AccessibilityService() {
             }
             builder.addStroke(gasStroke!!)
             hasStroke = true
-        } else {
-            gasStroke = null
-            currentGasY = GAS_Y
         }
 
-        // --- BRAKE LOGIC (Hold) ---
+        // --- BRAKE ---
         if (needsBrake) {
             val bPath = Path()
-            if (isFirst || brakeStroke == null) {
+            if (brakeStroke == null) {
                 currentBrakeY = BRAKE_Y
                 bPath.moveTo(BRAKE_X, currentBrakeY)
                 currentBrakeY += 1f 
@@ -151,9 +158,6 @@ class MultiTouchTest : AccessibilityService() {
             }
             builder.addStroke(brakeStroke!!)
             hasStroke = true
-        } else {
-            brakeStroke = null
-            currentBrakeY = BRAKE_Y
         }
 
         if (!hasStroke) {
@@ -182,6 +186,7 @@ class MultiTouchTest : AccessibilityService() {
     private fun resetStates() {
         steerStroke = null; gasStroke = null; brakeStroke = null
         activeSteerState = 0
+        lastGestureState = 0
         currentSteerX = 0f
         currentGasY = GAS_Y
         currentBrakeY = BRAKE_Y
