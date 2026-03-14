@@ -24,11 +24,8 @@ class MultiTouchTest : AccessibilityService() {
         private var brakeActive   = false
         
         private var isGesturing = false
-        
-        // TAP-TAP rokne ke liye naya State tracker
         private var lastGestureStateStr = "" 
         
-        // Active strokes ko memory me rakhne ke liye taaki Hold chhoote na
         private val currentStrokes = mutableMapOf<Int, GestureDescription.StrokeDescription>()
         private val currentPositions = mutableMapOf<Int, Pair<Float, Float>>()
 
@@ -45,6 +42,27 @@ class MultiTouchTest : AccessibilityService() {
         fun setBrake(on: Boolean) {
             brakeActive = on
             checkAndStart()
+        }
+
+        // ADDED BACK: UdpListenerService ka error fix karne ke liye
+        fun setButton(name: String, on: Boolean) {
+            // Agar game me aage chal kar extra buttons add karne honge toh yahan logic daalenge.
+            // Abhi ke liye isko khali rakha hai taaki Steer/Gas/Brake overlap na ho.
+        }
+
+        // ADDED BACK: Camera/Screen swipe feature compile hone ke liye
+        fun doSwipe(x: Float, y: Float, dir: String, dist: Float) {
+            val endX = when(dir) { "left" -> x-dist; "right" -> x+dist; else -> x }
+            val endY = when(dir) { "up"   -> y-dist; "down"  -> y+dist; else -> y }
+            val path = Path().apply { moveTo(x, y); lineTo(endX, endY) }
+            try {
+                instance?.dispatchGesture(
+                    GestureDescription.Builder()
+                        .addStroke(GestureDescription.StrokeDescription(path, 0L, 200L, false))
+                        .build(), null, null)
+            } catch (e: Exception) {
+                Log.e("SWIPE", e.message ?: "")
+            }
         }
 
         private fun checkAndStart() {
@@ -71,7 +89,6 @@ class MultiTouchTest : AccessibilityService() {
         val tilt = currentTilt
         val steerActive = if (tilt > DEADZONE_val) 1 else if (tilt < -DEADZONE_val) -1 else 0
         
-        // YAHAN TAP-TAP FIX HUA: Ab exact pixels ki jagah sirf logical state check hogi
         val currentStateStr = "S:$steerActive|G:$gasActive|B:$brakeActive"
         
         if (currentStateStr == "S:0|G:false|B:false") {
@@ -79,7 +96,6 @@ class MultiTouchTest : AccessibilityService() {
             return
         }
 
-        // Agar asli me naya button daba ya chhuta hai, tabhi Reset karo
         if (currentStateStr != lastGestureStateStr) {
             currentStrokes.clear()
             currentPositions.clear()
@@ -88,21 +104,17 @@ class MultiTouchTest : AccessibilityService() {
 
         val touchesToMake = mutableListOf<Pair<Float, Float>>()
 
-        // 1. Steering (Smooth slide)
         if (steerActive != 0) {
             val factor = (tilt / 10f).coerceIn(-1f, 1f)
             val sx = if (tilt > 0) RIGHT_X_val else LEFT_X_val
             val sy = if (tilt > 0) RIGHT_Y_val else LEFT_Y_val
-            // Tilt ke hisaab se X axis par slide karega
             touchesToMake.add(Pair(sx + factor * SLIDE_val, sy))
         }
 
-        // 2. Gas
         if (gasActive) {
             touchesToMake.add(Pair(GAS_X_val, GAS_Y_val))
         }
 
-        // 3. Brake
         if (brakeActive) {
             touchesToMake.add(Pair(BRAKE_X_val, BRAKE_Y_val))
         }
@@ -124,12 +136,11 @@ class MultiTouchTest : AccessibilityService() {
                 currX = targetX
                 currY = targetY
                 path.moveTo(currX, currY)
-                currX += 1f // Initial touch start karne ke liye
+                currX += 1f 
                 path.lineTo(currX, currY)
                 currentStrokes[i] = GestureDescription.StrokeDescription(path, 0L, duration, true)
             } else {
                 path.moveTo(currX, currY)
-                // Continue the stroke: Ya toh smoothly naye target par jao, ya wahin hold rakho
                 currX = if (currX == targetX) targetX + 1f else targetX
                 currY = targetY
                 path.lineTo(currX, currY)
