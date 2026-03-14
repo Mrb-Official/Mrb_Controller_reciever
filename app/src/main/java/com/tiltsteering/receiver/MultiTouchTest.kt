@@ -43,6 +43,38 @@ class MultiTouchTest : AccessibilityService() {
             })
         }
 
+
+        fun doSwipe(x: Float, y: Float, dir: String, dist: Float) {
+            val h = Handler(Looper.getMainLooper())
+            h.post {
+                val endX = when(dir) {
+                    "left"  -> x - dist
+                    "right" -> x + dist
+                    else    -> x
+                }
+                val endY = when(dir) {
+                    "up"   -> y - dist
+                    "down" -> y + dist
+                    else   -> y
+                }
+                val path = Path()
+                path.moveTo(x, y)
+                val steps = 10
+                for (i in 1..steps) {
+                    val p = i.toFloat() / steps
+                    path.lineTo(x + (endX - x) * p, y + (endY - y) * p)
+                }
+                val stroke = GestureDescription.StrokeDescription(path, 0L, 500L, false)
+                try {
+                    instance?.dispatchGesture(
+                        GestureDescription.Builder().addStroke(stroke).build(),
+                        null, h)
+                } catch (e: Exception) {
+                    android.util.Log.e("SWIPE", e.message ?: "")
+                }
+            }
+        }
+
         fun stop() {
             running = false
             gasActive = false
