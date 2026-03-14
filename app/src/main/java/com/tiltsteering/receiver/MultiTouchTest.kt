@@ -24,10 +24,24 @@ class MultiTouchTest : AccessibilityService() {
         private var running       = false
         private val handler       = Handler(Looper.getMainLooper())
 
-        fun updateTilt(tilt: Float) { currentTilt = tilt; ensureLoop() }
-        fun setGas(on: Boolean)     { gasActive = on; ensureLoop() }
+        // Dispatch immediately when state changes
+        private var stateChanged  = false
+
+        fun updateTilt(tilt: Float) {
+            currentTilt = tilt
+            stateChanged = true
+            ensureLoop()
+        }
+
+        fun setGas(on: Boolean) {
+            gasActive = on
+            stateChanged = true
+            ensureLoop()
+        }
+
         fun setButton(name: String, on: Boolean) {
             activeButtons[name] = on
+            stateChanged = true
             ensureLoop()
         }
 
@@ -44,8 +58,7 @@ class MultiTouchTest : AccessibilityService() {
         }
 
         fun doSwipe(x: Float, y: Float, dir: String, dist: Float) {
-            val h = Handler(Looper.getMainLooper())
-            h.post {
+            handler.post {
                 val endX = when(dir) { "left" -> x-dist; "right" -> x+dist; else -> x }
                 val endY = when(dir) { "up"   -> y-dist; "down"  -> y+dist; else -> y }
                 val path = Path()
@@ -57,9 +70,12 @@ class MultiTouchTest : AccessibilityService() {
                 try {
                     instance?.dispatchGesture(
                         GestureDescription.Builder()
-                            .addStroke(GestureDescription.StrokeDescription(path, 0L, 500L, false))
-                            .build(), null, h)
-                } catch (e: Exception) {}
+                            .addStroke(GestureDescription.StrokeDescription(
+                                path, 0L, 500L, false))
+                            .build(), null, handler)
+                } catch (e: Exception) {
+                    android.util.Log.e("SWIPE", e.message ?: "")
+                }
             }
         }
 
@@ -67,62 +83,89 @@ class MultiTouchTest : AccessibilityService() {
             running = false
             gasActive = false
             activeButtons.clear()
+            stateChanged = false
         }
     }
 
     private fun doGesture() {
-        // Steering - strict deadzone
-        val tilt = currentTilt
-        val steerActive = tilt > DEADZONE_val || tilt < -DEADZONE_val
+        // Collect ALL active touches
+        val touches = mutableListOf<Pair<Float, Float>>()
 
-        // ── Stroke 1: Steering ──────────────────────
-        if (steerActive) {
+        // 1. Steering
+        val tilt = currentTilt
+        if (tilt > DEADZONE_val || tilt < -DEADZONE_val) {
             val factor = (tilt / 10f).coerceIn(-1f, 1f)
             val sx = if (tilt > 0) RIGHT_X_val else LEFT_X_val
             val sy = if (tilt > 0) RIGHT_Y_val else LEFT_Y_val
-            val ex = sx + factor * SLIDE_val
-
-            val path = Path().apply { moveTo(sx, sy); lineTo(ex, sy) }
-            try {
-                dispatchGesture(
-                    GestureDescription.Builder()
-                        .addStroke(GestureDescription.StrokeDescription(
-                            path, 0L, 100L, false)) // willContinue=FALSE
-                        .build(), null, handler)
-            } catch (e: Exception) {}
+            touches.add(Pair(sx + factor * SLIDE_val, sy))
         }
 
-        // ── Stroke 2: Gas (completely separate gesture) ──
+        // 2. Gas
         if (gasActive) {
             val cfg = UdpListenerService.buttonConfig["GAS"]
-            val gx = cfg?.first  ?: GAS_X_val
-            val gy = cfg?.second ?: GAS_Y_val
-            val path = Path().apply { moveTo(gx, gy); lineTo(gx+1f, gy) }
-            try {
-                dispatchGesture(
-                    GestureDescription.Builder()
-                        .addStroke(GestureDescription.StrokeDescription(
-                            path, 0L, 100L, false)) // willContinue=FALSE
-                        .build(), null, handler)
-            } catch (e: Exception) {}
+            touches.add(Pair(cfg?.first ?: GAS_X_val, cfg?.second ?: GAS_Y_val))
         }
 
-        // ── Stroke 3+: Other buttons ──────────────────
+        // 3. Other buttons
         for ((name, active) in activeButtons) {
             if (!active) continue
             val cfg = UdpListenerService.buttonConfig[name] ?: continue
+            touches.add(Pair(cfg.first, cfg.second))
+        }
+
+        // Nothing = return
+        if (touches.isEmpty()) {
+            stateChanged = false
+            return
+        }
+
+        // Max 2 strokes per GestureDescription
+        // Build ONE gesture with up to 2 touches at same time
+        val builder = GestureDescription.Builder()
+        val maxStrokes = minOf(touches.size, 2)
+
+        for (i in 0 until maxStrokes) {
+            val (x, y) = touches[i]
             val path = Path().apply {
-                moveTo(cfg.first, cfg.second)
-                lineTo(cfg.first+1f, cfg.second)
+                moveTo(x, y)
+                lineTo(x + 1f, y)
+            }
+            builder.addStroke(
+                GestureDescription.StrokeDescription(
+                    path,
+                    0L,    // all start at same time
+                    200L,  // 200ms
+                    true   // willContinue = hold
+                )
+            )
+        }
+
+        // If more than 2 touches, dispatch rest separately
+        if (touches.size > 2) {
+            val builder2 = GestureDescription.Builder()
+            for (i in 2 until minOf(touches.size, 4)) {
+                val (x, y) = touches[i]
+                val path = Path().apply {
+                    moveTo(x, y)
+                    lineTo(x + 1f, y)
+                }
+                builder2.addStroke(
+                    GestureDescription.StrokeDescription(
+                        path, 0L, 200L, true)
+                )
             }
             try {
-                dispatchGesture(
-                    GestureDescription.Builder()
-                        .addStroke(GestureDescription.StrokeDescription(
-                            path, 0L, 100L, false))
-                        .build(), null, handler)
+                dispatchGesture(builder2.build(), null, handler)
             } catch (e: Exception) {}
         }
+
+        try {
+            dispatchGesture(builder.build(), null, handler)
+        } catch (e: Exception) {
+            android.util.Log.e("TOUCH", e.message ?: "")
+        }
+
+        stateChanged = false
     }
 
     override fun onServiceConnected() {
