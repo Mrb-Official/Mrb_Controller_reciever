@@ -18,15 +18,11 @@ class MultiTouchTest : AccessibilityService() {
         var SLIDE_val    = 60f
         var DEADZONE_val = 1.5f
 
-        private var currentTilt      = 0f
-        private var gasActive        = false
-        private val activeButtons    = mutableMapOf<String, Boolean>()
-        private var running          = false
-        private val handler          = Handler(Looper.getMainLooper())
-
-        // Track last state to avoid unnecessary re-dispatch
-        private var lastTouchKey     = ""
-        private var gestureActive    = false
+        private var currentTilt   = 0f
+        private var gasActive     = false
+        private val activeButtons = mutableMapOf<String, Boolean>()
+        private var running       = false
+        private val handler       = Handler(Looper.getMainLooper())
 
         fun updateTilt(tilt: Float) { currentTilt = tilt; ensureLoop() }
         fun setGas(on: Boolean)     { gasActive = on; ensureLoop() }
@@ -42,7 +38,7 @@ class MultiTouchTest : AccessibilityService() {
                 override fun run() {
                     if (!running) return
                     instance?.doGesture()
-                    handler.postDelayed(this, 80L)
+                    handler.postDelayed(this, 100L)
                 }
             })
         }
@@ -50,33 +46,20 @@ class MultiTouchTest : AccessibilityService() {
         fun doSwipe(x: Float, y: Float, dir: String, dist: Float) {
             val h = Handler(Looper.getMainLooper())
             h.post {
-                val endX = when(dir) {
-                    "left"  -> x - dist
-                    "right" -> x + dist
-                    else    -> x
-                }
-                val endY = when(dir) {
-                    "up"   -> y - dist
-                    "down" -> y + dist
-                    else   -> y
-                }
+                val endX = when(dir) { "left" -> x-dist; "right" -> x+dist; else -> x }
+                val endY = when(dir) { "up"   -> y-dist; "down"  -> y+dist; else -> y }
                 val path = Path()
                 path.moveTo(x, y)
                 for (i in 1..10) {
-                    val p = i.toFloat() / 10f
-                    path.lineTo(x + (endX - x) * p, y + (endY - y) * p)
+                    val p = i / 10f
+                    path.lineTo(x+(endX-x)*p, y+(endY-y)*p)
                 }
-                val stroke = GestureDescription.StrokeDescription(
-                    path, 0L, 500L, false)
                 try {
                     instance?.dispatchGesture(
-                        GestureDescription.Builder().addStroke(stroke).build(),
-                        null, h)
-                    gestureActive = false
-                    lastTouchKey = ""
-                } catch (e: Exception) {
-                    android.util.Log.e("SWIPE", e.message ?: "")
-                }
+                        GestureDescription.Builder()
+                            .addStroke(GestureDescription.StrokeDescription(path, 0L, 500L, false))
+                            .build(), null, h)
+                } catch (e: Exception) {}
             }
         }
 
@@ -84,76 +67,61 @@ class MultiTouchTest : AccessibilityService() {
             running = false
             gasActive = false
             activeButtons.clear()
-            lastTouchKey = ""
-            gestureActive = false
         }
     }
 
     private fun doGesture() {
-        val touches = mutableListOf<Triple<Float, Float, String>>() // x, y, id
-
-        // Steering
+        // Steering - strict deadzone
         val tilt = currentTilt
-        if (tilt > DEADZONE_val || tilt < -DEADZONE_val) {
+        val steerActive = tilt > DEADZONE_val || tilt < -DEADZONE_val
+
+        // ── Stroke 1: Steering ──────────────────────
+        if (steerActive) {
             val factor = (tilt / 10f).coerceIn(-1f, 1f)
             val sx = if (tilt > 0) RIGHT_X_val else LEFT_X_val
             val sy = if (tilt > 0) RIGHT_Y_val else LEFT_Y_val
-            touches.add(Triple(sx + factor * SLIDE_val, sy, "steer"))
+            val ex = sx + factor * SLIDE_val
+
+            val path = Path().apply { moveTo(sx, sy); lineTo(ex, sy) }
+            try {
+                dispatchGesture(
+                    GestureDescription.Builder()
+                        .addStroke(GestureDescription.StrokeDescription(
+                            path, 0L, 100L, false)) // willContinue=FALSE
+                        .build(), null, handler)
+            } catch (e: Exception) {}
         }
 
-        // Gas
+        // ── Stroke 2: Gas (completely separate gesture) ──
         if (gasActive) {
             val cfg = UdpListenerService.buttonConfig["GAS"]
-            touches.add(Triple(cfg?.first ?: GAS_X_val, cfg?.second ?: GAS_Y_val, "gas"))
+            val gx = cfg?.first  ?: GAS_X_val
+            val gy = cfg?.second ?: GAS_Y_val
+            val path = Path().apply { moveTo(gx, gy); lineTo(gx+1f, gy) }
+            try {
+                dispatchGesture(
+                    GestureDescription.Builder()
+                        .addStroke(GestureDescription.StrokeDescription(
+                            path, 0L, 100L, false)) // willContinue=FALSE
+                        .build(), null, handler)
+            } catch (e: Exception) {}
         }
 
-        // Active buttons
+        // ── Stroke 3+: Other buttons ──────────────────
         for ((name, active) in activeButtons) {
             if (!active) continue
             val cfg = UdpListenerService.buttonConfig[name] ?: continue
-            touches.add(Triple(cfg.first, cfg.second, name))
-        }
-
-        // Build state key
-        val stateKey = touches.joinToString("|") { "${it.third}:${it.first.toInt()},${it.second.toInt()}" }
-
-        // Nothing active = release all
-        if (touches.isEmpty()) {
-            if (gestureActive) {
-                gestureActive = false
-                lastTouchKey = ""
-            }
-            return
-        }
-
-        // Same state = don't redispatch = no drop!
-        if (stateKey == lastTouchKey && gestureActive) return
-
-        lastTouchKey = stateKey
-        gestureActive = true
-
-        // Dispatch chunked (max 2 per gesture)
-        touches.chunked(2).forEachIndexed { index, chunk ->
-            val builder = GestureDescription.Builder()
-            chunk.forEach { (x, y, _) ->
-                val path = Path().apply {
-                    moveTo(x, y)
-                    lineTo(x + 1f, y)
-                }
-                builder.addStroke(
-                    GestureDescription.StrokeDescription(
-                        path,
-                        (index * 10).toLong(),
-                        2000L,  // 2 second duration
-                        true    // willContinue
-                    )
-                )
+            val path = Path().apply {
+                moveTo(cfg.first, cfg.second)
+                lineTo(cfg.first+1f, cfg.second)
             }
             try {
-                dispatchGesture(builder.build(), null, handler)
-            } catch (e: Exception) {
-                android.util.Log.e("TOUCH", e.message ?: "")
-            }
+                dispatchGesture(
+                    GestureDescription.Builder()
+                        .addStroke(GestureDescription.StrokeDescription(
+                            path, 0L, 100L, false))
+                        .build(), null, handler)
+            } catch (e: Exception) {}
         }
     }
 
