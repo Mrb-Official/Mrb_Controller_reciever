@@ -3,8 +3,10 @@ package com.tiltsteering.receiver
 import android.content.Context
 import android.content.Intent
 import android.graphics.*
+import android.net.wifi.WifiManager
 import android.os.*
 import android.provider.Settings
+import android.text.format.Formatter
 import android.util.AttributeSet
 import android.view.*
 import android.widget.*
@@ -36,7 +38,7 @@ class SteeringWheelView @JvmOverloads constructor(
         for (i in 0..2) {
             val a = Math.toRadians((i * 120.0 - 90.0))
             canvas.drawLine(
-                cx + (r*0.28f* Math.cos(a)).toFloat(), cy + (r*0.28f*Math.sin(a)).toFloat(),
+                cx + (r*0.28f*Math.cos(a)).toFloat(), cy + (r*0.28f*Math.sin(a)).toFloat(),
                 cx + (r*Math.cos(a)).toFloat(),        cy + (r*Math.sin(a)).toFloat(), paintSpoke)
         }
         canvas.drawCircle(cx, cy - r + 8f, 5f, paintDot)
@@ -45,9 +47,10 @@ class SteeringWheelView @JvmOverloads constructor(
 }
 
 class MainActivity : AppCompatActivity() {
-    private lateinit var tvStatus: TextView
-    private lateinit var tvTilt: TextView
+    private lateinit var tvStatus:  TextView
+    private lateinit var tvTilt:    TextView
     private lateinit var tvPackets: TextView
+    private lateinit var tvIp:      TextView
     private lateinit var wheelView: SteeringWheelView
     private val handler = Handler(Looper.getMainLooper())
 
@@ -62,6 +65,14 @@ class MainActivity : AppCompatActivity() {
                 if (MultiTouchTest.instance != null)
                     Color.argb(255,0,255,100)
                 else Color.argb(255,80,80,80))
+            // IP
+            try {
+                val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+                val ip = Formatter.formatIpAddress(wm.connectionInfo.ipAddress)
+                tvIp.text = ip
+            } catch (e: Exception) {
+                tvIp.text = "---"
+            }
             handler.postDelayed(this, 50)
         }
     }
@@ -73,6 +84,7 @@ class MainActivity : AppCompatActivity() {
         tvStatus  = findViewById(R.id.tvStatus)
         tvTilt    = findViewById(R.id.tvTilt)
         tvPackets = findViewById(R.id.tvPackets)
+        tvIp      = findViewById(R.id.tvIp)
         wheelView = findViewById(R.id.wheelView)
         startForegroundService(Intent(this, UdpListenerService::class.java))
         findViewById<Button>(R.id.btnAccessibility).setOnClickListener {

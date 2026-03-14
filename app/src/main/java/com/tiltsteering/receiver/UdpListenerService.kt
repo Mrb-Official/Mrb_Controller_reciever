@@ -14,9 +14,22 @@ class UdpListenerService : Service() {
         var packetCount = 0
         var lastTilt    = "0.0"
 
-        // Button config: name -> (x, y)
-        val buttonConfig = mutableMapOf<String, Pair<Float, Float>>()
-        val buttonHold   = mutableMapOf<String, Boolean>()
+        val buttonConfig = mutableMapOf(
+            "BRAKE"   to Pair(235f,  720f),
+            "GAS"     to Pair(2192f, 850f),
+            "GEAR+"   to Pair(1900f, 600f),
+            "GEAR-"   to Pair(1900f, 900f),
+            "STEER L" to Pair(235f,  720f),
+            "STEER R" to Pair(587f,  738f),
+        )
+        val buttonHold = mutableMapOf(
+            "BRAKE"   to true,
+            "GAS"     to true,
+            "GEAR+"   to false,
+            "GEAR-"   to false,
+            "STEER L" to true,
+            "STEER R" to true,
+        )
     }
 
     private val scope  = CoroutineScope(Dispatchers.IO + SupervisorJob())
@@ -58,7 +71,7 @@ class UdpListenerService : Service() {
                 val hold = prefs.getBoolean("btn_hold_$name", true)
                 buttonConfig[name] = Pair(x, y)
                 buttonHold[name]   = hold
-                Log.d("UDP", "Loaded: $name = $x,$y hold=$hold")
+                Log.d("UDP", "Loaded: $name=$x,$y")
             }
     }
 
@@ -99,7 +112,10 @@ class UdpListenerService : Service() {
             msg.startsWith("BTN:") -> {
                 val p = msg.split(":")
                 if (p.size >= 3) {
-                    MultiTouchTest.setButton(p[1], p[2] == "ON")
+                    val name = p[1]
+                    val on   = p[2] == "ON"
+                    Log.d("UDP", "BTN: $name=$on coords=${buttonConfig[name]}")
+                    MultiTouchTest.setButton(name, on)
                 }
             }
         }
@@ -123,7 +139,7 @@ class UdpListenerService : Service() {
     private fun buildNotification() =
         Notification.Builder(this, "tilt")
             .setContentTitle("TiltController Active")
-            .setContentText("Listening on :9876")
+            .setContentText("Listening :9876")
             .setSmallIcon(android.R.drawable.ic_menu_send)
             .build()
 }
