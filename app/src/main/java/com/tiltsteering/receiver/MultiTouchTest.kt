@@ -18,18 +18,18 @@ class MultiTouchTest : AccessibilityService() {
         var SLIDE_val    = 60f
         var DEADZONE_val = 1.5f
 
-        private var currentTilt   = 0f
-        private var gasActive     = false
-        private val activeButtons = mutableMapOf<String, Boolean>()
-        private var running       = false
-        private val handler       = Handler(Looper.getMainLooper())
+        private var currentTilt      = 0f
+        private var gasActive        = false
+        private val activeButtons    = mutableMapOf<String, Boolean>()
+        private var running          = false
+        private val handler          = Handler(Looper.getMainLooper())
 
-        // Gesture restart timer
-        private var gestureStartTime = 0L
-        private const val MAX_GESTURE_MS = 2800L // Android limit 3000ms
+        // Track last state to avoid unnecessary re-dispatch
+        private var lastTouchKey     = ""
+        private var gestureActive    = false
 
         fun updateTilt(tilt: Float) { currentTilt = tilt; ensureLoop() }
-        fun setGas(on: Boolean)     { gasActive   = on;   ensureLoop() }
+        fun setGas(on: Boolean)     { gasActive = on; ensureLoop() }
         fun setButton(name: String, on: Boolean) {
             activeButtons[name] = on
             ensureLoop()
@@ -38,12 +38,11 @@ class MultiTouchTest : AccessibilityService() {
         private fun ensureLoop() {
             if (running) return
             running = true
-            gestureStartTime = System.currentTimeMillis()
             handler.post(object : Runnable {
                 override fun run() {
                     if (!running) return
                     instance?.doGesture()
-                    handler.postDelayed(this, 100L)
+                    handler.postDelayed(this, 80L)
                 }
             })
         }
@@ -63,9 +62,8 @@ class MultiTouchTest : AccessibilityService() {
                 }
                 val path = Path()
                 path.moveTo(x, y)
-                val steps = 10
-                for (i in 1..steps) {
-                    val p = i.toFloat() / steps
+                for (i in 1..10) {
+                    val p = i.toFloat() / 10f
                     path.lineTo(x + (endX - x) * p, y + (endY - y) * p)
                 }
                 val stroke = GestureDescription.StrokeDescription(
@@ -74,6 +72,8 @@ class MultiTouchTest : AccessibilityService() {
                     instance?.dispatchGesture(
                         GestureDescription.Builder().addStroke(stroke).build(),
                         null, h)
+                    gestureActive = false
+                    lastTouchKey = ""
                 } catch (e: Exception) {
                     android.util.Log.e("SWIPE", e.message ?: "")
                 }
@@ -84,12 +84,13 @@ class MultiTouchTest : AccessibilityService() {
             running = false
             gasActive = false
             activeButtons.clear()
-            gestureStartTime = 0L
+            lastTouchKey = ""
+            gestureActive = false
         }
     }
 
     private fun doGesture() {
-        val touches = mutableListOf<Pair<Float, Float>>()
+        val touches = mutableListOf<Triple<Float, Float, String>>() // x, y, id
 
         // Steering
         val tilt = currentTilt
@@ -97,42 +98,44 @@ class MultiTouchTest : AccessibilityService() {
             val factor = (tilt / 10f).coerceIn(-1f, 1f)
             val sx = if (tilt > 0) RIGHT_X_val else LEFT_X_val
             val sy = if (tilt > 0) RIGHT_Y_val else LEFT_Y_val
-            touches.add(Pair(sx + factor * SLIDE_val, sy))
+            touches.add(Triple(sx + factor * SLIDE_val, sy, "steer"))
         }
 
         // Gas
         if (gasActive) {
             val cfg = UdpListenerService.buttonConfig["GAS"]
-            touches.add(Pair(cfg?.first ?: GAS_X_val, cfg?.second ?: GAS_Y_val))
+            touches.add(Triple(cfg?.first ?: GAS_X_val, cfg?.second ?: GAS_Y_val, "gas"))
         }
 
         // Active buttons
         for ((name, active) in activeButtons) {
             if (!active) continue
-            val cfg = UdpListenerService.buttonConfig[name]
-            if (cfg != null) {
-                touches.add(Pair(cfg.first, cfg.second))
-            }
+            val cfg = UdpListenerService.buttonConfig[name] ?: continue
+            touches.add(Triple(cfg.first, cfg.second, name))
         }
 
+        // Build state key
+        val stateKey = touches.joinToString("|") { "${it.third}:${it.first.toInt()},${it.second.toInt()}" }
+
+        // Nothing active = release all
         if (touches.isEmpty()) {
-            gestureStartTime = System.currentTimeMillis()
+            if (gestureActive) {
+                gestureActive = false
+                lastTouchKey = ""
+            }
             return
         }
 
-        // Check if gesture needs restart (before 3s Android limit)
-        val elapsed = System.currentTimeMillis() - gestureStartTime
-        val needsRestart = elapsed >= MAX_GESTURE_MS
+        // Same state = don't redispatch = no drop!
+        if (stateKey == lastTouchKey && gestureActive) return
 
-        if (needsRestart) {
-            // Reset timer
-            gestureStartTime = System.currentTimeMillis()
-            android.util.Log.d("TOUCH", "Gesture restart at ${elapsed}ms")
-        }
+        lastTouchKey = stateKey
+        gestureActive = true
 
+        // Dispatch chunked (max 2 per gesture)
         touches.chunked(2).forEachIndexed { index, chunk ->
             val builder = GestureDescription.Builder()
-            chunk.forEach { (x, y) ->
+            chunk.forEach { (x, y, _) ->
                 val path = Path().apply {
                     moveTo(x, y)
                     lineTo(x + 1f, y)
@@ -141,9 +144,8 @@ class MultiTouchTest : AccessibilityService() {
                     GestureDescription.StrokeDescription(
                         path,
                         (index * 10).toLong(),
-                        // Agar restart = short duration, warna normal
-                        if (needsRestart) 50L else 200L,
-                        true // willContinue = always true for hold
+                        2000L,  // 2 second duration
+                        true    // willContinue
                     )
                 )
             }
