@@ -17,18 +17,18 @@ class UdpListenerService : Service() {
         val buttonConfig = mutableMapOf(
             "BRAKE"   to Pair(235f,  720f),
             "GAS"     to Pair(2192f, 850f),
-            "GEAR+"   to Pair(1900f, 600f),
-            "GEAR-"   to Pair(1900f, 900f),
-            "STEER L" to Pair(235f,  720f),
-            "STEER R" to Pair(587f,  738f),
+            "GEAR+"   to Pair(2244f, 592f),
+            "GEAR-"   to Pair(2244f, 592f),
         )
         val buttonHold = mutableMapOf(
             "BRAKE"   to true,
             "GAS"     to true,
             "GEAR+"   to false,
             "GEAR-"   to false,
-            "STEER L" to true,
-            "STEER R" to true,
+        )
+        val buttonSwipe = mutableMapOf(
+            "GEAR+"   to Pair("up",   200f),
+            "GEAR-"   to Pair("down", 200f),
         )
     }
 
@@ -69,17 +69,23 @@ class UdpListenerService : Service() {
                 val x    = prefs.getFloat("btn_x_$name", 0f)
                 val y    = prefs.getFloat("btn_y_$name", 0f)
                 val hold = prefs.getBoolean("btn_hold_$name", true)
+                val sdir = prefs.getString("btn_sdir_$name", "none") ?: "none"
+                val sdist= prefs.getFloat("btn_sdist_$name", 100f)
                 buttonConfig[name] = Pair(x, y)
                 buttonHold[name]   = hold
-                Log.d("UDP", "Loaded: $name=$x,$y")
+                if (sdir != "none") buttonSwipe[name] = Pair(sdir, sdist)
+                Log.d("UDP", "Loaded: $name=$x,$y swipe=$sdir$sdist")
             }
     }
 
-    private fun saveConfig(name: String, x: Float, y: Float, hold: Boolean) {
+    private fun saveConfig(name: String, x: Float, y: Float,
+                           hold: Boolean, sdir: String, sdist: Float) {
         prefs.edit()
             .putFloat("btn_x_$name", x)
             .putFloat("btn_y_$name", y)
             .putBoolean("btn_hold_$name", hold)
+            .putString("btn_sdir_$name", sdir)
+            .putFloat("btn_sdist_$name", sdist)
             .apply()
     }
 
@@ -90,31 +96,54 @@ class UdpListenerService : Service() {
                 lastTilt = v.toString()
                 MultiTouchTest.updateTilt(v)
             }
+
             msg == "RACE:ON"  -> MultiTouchTest.setGas(true)
             msg == "RACE:OFF" -> MultiTouchTest.setGas(false)
             msg == "BRK:ON"   -> MultiTouchTest.setButton("BRAKE", true)
             msg == "BRK:OFF"  -> MultiTouchTest.setButton("BRAKE", false)
 
+            // CFG:NAME:X:Y:HOLD:SWIPEDIR:SWIPEDIST
             msg.startsWith("CFG:") -> {
                 val p = msg.split(":")
                 if (p.size >= 5) {
-                    val name = p[1]
-                    val x    = p[2].toFloatOrNull() ?: return
-                    val y    = p[3].toFloatOrNull() ?: return
-                    val hold = p[4] == "1"
+                    val name  = p[1]
+                    val x     = p[2].toFloatOrNull() ?: return
+                    val y     = p[3].toFloatOrNull() ?: return
+                    val hold  = p[4] == "1"
+                    val sdir  = if (p.size >= 6) p[5] else "none"
+                    val sdist = if (p.size >= 7) p[6].toFloatOrNull() ?: 100f else 100f
                     buttonConfig[name] = Pair(x, y)
                     buttonHold[name]   = hold
-                    saveConfig(name, x, y, hold)
-                    Log.d("UDP", "CFG: $name=$x,$y hold=$hold")
+                    if (sdir != "none") buttonSwipe[name] = Pair(sdir, sdist)
+                    saveConfig(name, x, y, hold, sdir, sdist)
+                    Log.d("UDP", "CFG: $name=$x,$y hold=$hold swipe=$sdir$sdist")
                 }
             }
 
+            // SWIPE:NAME:DIR:DIST — direct swipe command
+            msg.startsWith("SWIPE:") -> {
+                val p = msg.split(":")
+                if (p.size >= 4) {
+                    val name = p[1]
+                    val dir  = p[2]
+                    val dist = p[3].toFloatOrNull() ?: 200f
+                    val cfg  = buttonConfig[name]
+                    if (cfg != null) {
+                        Log.d("UDP", "SWIPE: $name dir=$dir dist=$dist at ${cfg.first},${cfg.second}")
+                        MultiTouchTest.doSwipe(cfg.first, cfg.second, dir, dist)
+                    } else {
+                        Log.w("UDP", "SWIPE: No coords for $name")
+                    }
+                }
+            }
+
+            // BTN:NAME:ON/OFF — hold buttons
             msg.startsWith("BTN:") -> {
                 val p = msg.split(":")
                 if (p.size >= 3) {
                     val name = p[1]
                     val on   = p[2] == "ON"
-                    Log.d("UDP", "BTN: $name=$on coords=${buttonConfig[name]}")
+                    Log.d("UDP", "BTN: $name=$on")
                     MultiTouchTest.setButton(name, on)
                 }
             }
