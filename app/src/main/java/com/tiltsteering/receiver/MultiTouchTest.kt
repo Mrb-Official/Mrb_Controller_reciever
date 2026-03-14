@@ -24,6 +24,10 @@ class MultiTouchTest : AccessibilityService() {
         private var running       = false
         private val handler       = Handler(Looper.getMainLooper())
 
+        // Gesture restart timer
+        private var gestureStartTime = 0L
+        private const val MAX_GESTURE_MS = 2800L // Android limit 3000ms
+
         fun updateTilt(tilt: Float) { currentTilt = tilt; ensureLoop() }
         fun setGas(on: Boolean)     { gasActive   = on;   ensureLoop() }
         fun setButton(name: String, on: Boolean) {
@@ -34,6 +38,7 @@ class MultiTouchTest : AccessibilityService() {
         private fun ensureLoop() {
             if (running) return
             running = true
+            gestureStartTime = System.currentTimeMillis()
             handler.post(object : Runnable {
                 override fun run() {
                     if (!running) return
@@ -42,7 +47,6 @@ class MultiTouchTest : AccessibilityService() {
                 }
             })
         }
-
 
         fun doSwipe(x: Float, y: Float, dir: String, dist: Float) {
             val h = Handler(Looper.getMainLooper())
@@ -64,7 +68,8 @@ class MultiTouchTest : AccessibilityService() {
                     val p = i.toFloat() / steps
                     path.lineTo(x + (endX - x) * p, y + (endY - y) * p)
                 }
-                val stroke = GestureDescription.StrokeDescription(path, 0L, 500L, false)
+                val stroke = GestureDescription.StrokeDescription(
+                    path, 0L, 500L, false)
                 try {
                     instance?.dispatchGesture(
                         GestureDescription.Builder().addStroke(stroke).build(),
@@ -79,14 +84,14 @@ class MultiTouchTest : AccessibilityService() {
             running = false
             gasActive = false
             activeButtons.clear()
+            gestureStartTime = 0L
         }
     }
 
     private fun doGesture() {
-        // Sabhi active touches ek list mein collect karo
         val touches = mutableListOf<Pair<Float, Float>>()
 
-        // 1. Steering
+        // Steering
         val tilt = currentTilt
         if (tilt > DEADZONE_val || tilt < -DEADZONE_val) {
             val factor = (tilt / 10f).coerceIn(-1f, 1f)
@@ -95,27 +100,36 @@ class MultiTouchTest : AccessibilityService() {
             touches.add(Pair(sx + factor * SLIDE_val, sy))
         }
 
-        // 2. Gas
+        // Gas
         if (gasActive) {
             val cfg = UdpListenerService.buttonConfig["GAS"]
             touches.add(Pair(cfg?.first ?: GAS_X_val, cfg?.second ?: GAS_Y_val))
         }
 
-        // 3. Active buttons
+        // Active buttons
         for ((name, active) in activeButtons) {
             if (!active) continue
             val cfg = UdpListenerService.buttonConfig[name]
             if (cfg != null) {
                 touches.add(Pair(cfg.first, cfg.second))
-                android.util.Log.d("BTN", "Touch: $name=${cfg.first},${cfg.second}")
-            } else {
-                android.util.Log.w("BTN", "No coords: $name")
             }
         }
 
-        if (touches.isEmpty()) return
+        if (touches.isEmpty()) {
+            gestureStartTime = System.currentTimeMillis()
+            return
+        }
 
-        // Max 2 strokes per GestureDescription = chunked dispatch
+        // Check if gesture needs restart (before 3s Android limit)
+        val elapsed = System.currentTimeMillis() - gestureStartTime
+        val needsRestart = elapsed >= MAX_GESTURE_MS
+
+        if (needsRestart) {
+            // Reset timer
+            gestureStartTime = System.currentTimeMillis()
+            android.util.Log.d("TOUCH", "Gesture restart at ${elapsed}ms")
+        }
+
         touches.chunked(2).forEachIndexed { index, chunk ->
             val builder = GestureDescription.Builder()
             chunk.forEach { (x, y) ->
@@ -127,8 +141,9 @@ class MultiTouchTest : AccessibilityService() {
                     GestureDescription.StrokeDescription(
                         path,
                         (index * 10).toLong(),
-                        200L,
-                        true
+                        // Agar restart = short duration, warna normal
+                        if (needsRestart) 50L else 200L,
+                        true // willContinue = always true for hold
                     )
                 )
             }
