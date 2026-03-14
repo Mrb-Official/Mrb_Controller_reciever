@@ -51,46 +51,73 @@ class MultiTouchTest : AccessibilityService() {
     }
 
     private fun doGesture() {
-        val builder = GestureDescription.Builder()
-        var strokes = 0
+        // Steering aur buttons alag alag dispatch karo
+        // Kyunki GestureDescription max 2 strokes = simultaneous touches
+        // Solution: Steering = apna gesture, Buttons = apna alag gesture
 
-        // Steering
+        dispatchSteering()
+        dispatchButtons()
+    }
+
+    private fun dispatchSteering() {
         val tilt = currentTilt
-        if (strokes < 2 && (tilt > DEADZONE_val || tilt < -DEADZONE_val)) {
-            val factor = (tilt / 10f).coerceIn(-1f, 1f)
-            val sx = if (tilt > 0) RIGHT_X_val else LEFT_X_val
-            val sy = if (tilt > 0) RIGHT_Y_val else LEFT_Y_val
-            val ex = sx + factor * SLIDE_val
-            val path = Path().apply { moveTo(sx, sy); lineTo(ex, sy) }
-            builder.addStroke(GestureDescription.StrokeDescription(path, 0L, 200L, true))
-            strokes++
-        }
+        if (tilt <= DEADZONE_val && tilt >= -DEADZONE_val) return
 
-        // Gas - use CFG coordinates if available
-        if (strokes < 2 && gasActive) {
+        val factor = (tilt / 10f).coerceIn(-1f, 1f)
+        val sx = if (tilt > 0) RIGHT_X_val else LEFT_X_val
+        val sy = if (tilt > 0) RIGHT_Y_val else LEFT_Y_val
+        val ex = sx + factor * SLIDE_val
+
+        val path = Path().apply { moveTo(sx, sy); lineTo(ex, sy) }
+        val stroke = GestureDescription.StrokeDescription(path, 0L, 200L, true)
+
+        try {
+            dispatchGesture(
+                GestureDescription.Builder().addStroke(stroke).build(),
+                null, handler)
+        } catch (e: Exception) {
+            android.util.Log.e("STEER", e.message ?: "")
+        }
+    }
+
+    private fun dispatchButtons() {
+        // Gas + active buttons ko ek saath dispatch karo (max 2 per gesture)
+        val toDispatch = mutableListOf<Pair<Float, Float>>()
+
+        // Gas
+        if (gasActive) {
             val cfg = UdpListenerService.buttonConfig["GAS"]
-            val gx  = cfg?.first  ?: GAS_X_val
-            val gy  = cfg?.second ?: GAS_Y_val
-            val path = Path().apply { moveTo(gx, gy); lineTo(gx, gy) }
-            builder.addStroke(GestureDescription.StrokeDescription(path, 0L, 200L, true))
-            strokes++
+            toDispatch.add(Pair(cfg?.first ?: GAS_X_val, cfg?.second ?: GAS_Y_val))
         }
 
-        // Other buttons
+        // Active buttons
         for ((name, active) in activeButtons) {
-            if (!active || strokes >= 2) continue
-            val cfg = UdpListenerService.buttonConfig[name] ?: continue
-            val path = Path().apply {
-                moveTo(cfg.first, cfg.second)
-                lineTo(cfg.first, cfg.second)
+            if (!active) continue
+            val cfg = UdpListenerService.buttonConfig[name]
+            if (cfg != null) {
+                toDispatch.add(Pair(cfg.first, cfg.second))
+                android.util.Log.d("BTN", "Touch: $name = ${cfg.first},${cfg.second}")
+            } else {
+                android.util.Log.w("BTN", "No coords for: $name")
             }
-            builder.addStroke(GestureDescription.StrokeDescription(path, 0L, 200L, true))
-            strokes++
         }
 
-        if (strokes == 0) return
-        try { dispatchGesture(builder.build(), null, handler) }
-        catch (e: Exception) { android.util.Log.e("TOUCH", e.message ?: "") }
+        if (toDispatch.isEmpty()) return
+
+        // 2-2 karke dispatch karo
+        toDispatch.chunked(2).forEach { chunk ->
+            val builder = GestureDescription.Builder()
+            chunk.forEach { (x, y) ->
+                val path = Path().apply { moveTo(x, y); lineTo(x, y) }
+                builder.addStroke(
+                    GestureDescription.StrokeDescription(path, 0L, 200L, true))
+            }
+            try {
+                dispatchGesture(builder.build(), null, handler)
+            } catch (e: Exception) {
+                android.util.Log.e("BTN", e.message ?: "")
+            }
+        }
     }
 
     override fun onServiceConnected() {
