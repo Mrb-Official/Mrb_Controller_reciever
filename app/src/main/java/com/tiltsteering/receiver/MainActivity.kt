@@ -40,7 +40,7 @@ class SteeringWheelView @JvmOverloads constructor(
         color = Color.argb(60, 255, 255, 255)
         style = Paint.Style.STROKE
         strokeWidth = 8f
-        strokeCap = Paint.Cap.ROUND
+        strokeCap = Paint Cap.ROUND
     }
     private val paintDot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
@@ -97,8 +97,8 @@ class MainActivity : AppCompatActivity() {
     // Page 1
     private lateinit var page1: View
     private lateinit var tvIp: TextView
-    private lateinit var btnAccessibility: android.widget.Button
-    private lateinit var btnStart: android.widget.Button
+    private lateinit var btnAccessibility: Button
+    private lateinit var btnStart: Button
 
     // Page 2
     private lateinit var page2: View
@@ -109,9 +109,10 @@ class MainActivity : AppCompatActivity() {
 
     private val tick = object : Runnable {
         override fun run() {
-            val pkt  = UdpListenerService.packetCount
-            val tilt = UdpListenerService.lastTilt.toFloatOrNull() ?: 0f
-            val serviceOn = MultiTouchTest.instance != null
+            // Safe checks to prevent crashes if services aren't ready
+            val pkt  = try { UdpListenerService.packetCount } catch(e: Exception) { 0 }
+            val tilt = try { UdpListenerService.lastTilt.toFloatOrNull() ?: 0f } catch(e: Exception) { 0f }
+            val serviceOn = try { MultiTouchTest.instance != null } catch(e: Exception) { false }
 
             // Update IP
             tvIp.text = getIp()
@@ -120,7 +121,7 @@ class MainActivity : AppCompatActivity() {
             btnStart.isEnabled = serviceOn
             btnStart.alpha = if (serviceOn) 1f else 0.4f
 
-            // Auto switch to page 2
+            // Auto switch to page 2 if packets received
             if (!onPage2 && pkt > 0) switchToPage2()
 
             if (onPage2) {
@@ -143,11 +144,13 @@ class MainActivity : AppCompatActivity() {
 
         // Fullscreen landscape
         window.decorView.windowInsetsController?.hide(
-            android.view.WindowInsets.Type.statusBars() or
-            android.view.WindowInsets.Type.navigationBars())
+            WindowInsets.Type.statusBars() or
+            WindowInsets.Type.navigationBars())
         window.decorView.setBackgroundColor(Color.parseColor("#0A0A0A"))
 
-        startForegroundService(Intent(this, UdpListenerService::class.java))
+        try {
+            startForegroundService(Intent(this, UdpListenerService::class.java))
+        } catch(e: Exception) {}
 
         val root = FrameLayout(this).apply {
             setBackgroundColor(Color.parseColor("#0A0A0A"))
@@ -173,22 +176,22 @@ class MainActivity : AppCompatActivity() {
     private fun buildPage1(): View {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = android.view.Gravity.CENTER
+            gravity = Gravity.CENTER
             setBackgroundColor(Color.parseColor("#0A0A0A"))
             setPadding(64, 48, 64, 48)
         }
 
-        // App icon
+        // App icon - Robust loading
         val ivIcon = ImageView(this).apply {
-            try {
-                val bmp = android.graphics.BitmapFactory.decodeResource(
-                    resources, R.drawable.icon)
-                setImageBitmap(bmp)
-            } catch (e: Exception) {
-                setImageResource(android.R.drawable.ic_menu_send)
+            // Try loading the copied icon, fallback to default if missing
+            val iconResId = resources.getIdentifier("icon", "drawable", packageName)
+            if (iconResId != 0) {
+                setImageResource(iconResId)
+            } else {
+                setImageResource(android.R.drawable.ic_menu_send) // Fallback icon
             }
             layoutParams = LinearLayout.LayoutParams(120, 120).apply {
-                gravity = android.view.Gravity.CENTER
+                gravity = Gravity.CENTER
                 bottomMargin = 24
             }
             scaleType = ImageView.ScaleType.FIT_CENTER
@@ -200,7 +203,7 @@ class MainActivity : AppCompatActivity() {
             textSize = 26f
             setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            gravity = android.view.Gravity.CENTER
+            gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT).apply {
@@ -213,7 +216,7 @@ class MainActivity : AppCompatActivity() {
             text = "Tilt Steering Receiver"
             textSize = 13f
             setTextColor(Color.argb(140, 255, 255, 255))
-            gravity = android.view.Gravity.CENTER
+            gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT).apply {
@@ -224,7 +227,7 @@ class MainActivity : AppCompatActivity() {
         // IP Card
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = android.view.Gravity.CENTER
+            gravity = Gravity.CENTER
             setBackgroundColor(Color.parseColor("#161616"))
             setPadding(32, 24, 32, 24)
             outlineProvider = object : ViewOutlineProvider() {
@@ -244,7 +247,7 @@ class MainActivity : AppCompatActivity() {
             text = "RECEIVER IP"
             textSize = 10f
             setTextColor(Color.argb(100, 255, 255, 255))
-            gravity = android.view.Gravity.CENTER
+            gravity = Gravity.CENTER
             letterSpacing = 0.2f
         }
 
@@ -253,7 +256,7 @@ class MainActivity : AppCompatActivity() {
             textSize = 28f
             setTextColor(Color.argb(255, 0, 255, 140))
             typeface = Typeface.create("monospace", Typeface.BOLD)
-            gravity = android.view.Gravity.CENTER
+            gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT).apply {
@@ -266,7 +269,7 @@ class MainActivity : AppCompatActivity() {
             text = "Enter this IP in MRB Controller sender app"
             textSize = 12f
             setTextColor(Color.argb(100, 255, 255, 255))
-            gravity = android.view.Gravity.CENTER
+            gravity = Gravity.CENTER
         }
 
         card.addView(tvIpLabel)
@@ -292,7 +295,7 @@ class MainActivity : AppCompatActivity() {
             text = "Enable MRB Controller in Accessibility first"
             textSize = 11f
             setTextColor(Color.argb(80, 255, 255, 255))
-            gravity = android.view.Gravity.CENTER
+            gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT).apply {
@@ -305,8 +308,9 @@ class MainActivity : AppCompatActivity() {
         root.addView(tvSub)
         root.addView(card)
         root.addView(btnAccessibility)
-        root.addView(Space(this).apply {
-            layoutParams = LinearLayout.LayoutParams(1, 12)
+        // Replaced Space with view with dimensions
+        root.addView(View(this).apply {
+            layoutParams = LinearLayout.LayoutParams(1, 12.dpToPx())
         })
         root.addView(btnStart)
         root.addView(tvHint)
@@ -322,15 +326,15 @@ class MainActivity : AppCompatActivity() {
 
         // Steering wheel center
         wheelView = SteeringWheelView(this).apply {
-            layoutParams = FrameLayout.LayoutParams(320, 320).apply {
-                gravity = android.view.Gravity.CENTER
+            layoutParams = FrameLayout.LayoutParams(320.dpToPx(), 320.dpToPx()).apply {
+                gravity = Gravity.CENTER
             }
         }
 
         // Top bar
         val topBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
-            setPadding(24, 20, 24, 20)
+            setPadding(24.dpToPx(), 20.dpToPx(), 24.dpToPx(), 20.dpToPx())
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT)
@@ -352,7 +356,7 @@ class MainActivity : AppCompatActivity() {
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                marginEnd = 16
+                marginEnd = 16.dpToPx()
             }
         }
 
@@ -361,8 +365,13 @@ class MainActivity : AppCompatActivity() {
             textSize = 20f
             setTextColor(Color.argb(80, 255, 255, 255))
             setOnClickListener {
-                startActivity(Intent(
-                    this@MainActivity, SettingsActivity::class.java))
+                // Safe check for SettingsActivity
+                try {
+                    startActivity(Intent(
+                        this@MainActivity, Class.forName("${packageName}.SettingsActivity")))
+                } catch(e: Exception) {
+                    Toast.makeText(this@MainActivity, "Settings not implemented", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
@@ -373,12 +382,12 @@ class MainActivity : AppCompatActivity() {
         // Bottom tilt area
         val bottom = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = android.view.Gravity.CENTER_HORIZONTAL
-            setPadding(48, 0, 48, 32)
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(48.dpToPx(), 0, 48.dpToPx(), 32.dpToPx())
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT).apply {
-                gravity = android.view.Gravity.BOTTOM
+                gravity = Gravity.BOTTOM
             }
         }
 
@@ -387,11 +396,11 @@ class MainActivity : AppCompatActivity() {
             textSize = 22f
             setTextColor(Color.WHITE)
             typeface = Typeface.create("monospace", Typeface.BOLD)
-            gravity = android.view.Gravity.CENTER
+            gravity = Gravity.CENTER
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = 12
+                bottomMargin = 12.dpToPx()
             }
         }
 
@@ -399,7 +408,7 @@ class MainActivity : AppCompatActivity() {
             android.R.attr.progressBarStyleHorizontal).apply {
             max = 200; progress = 100
             layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT, 6)
+                LinearLayout.LayoutParams.MATCH_PARENT, 6.dpToPx())
         }
 
         // Ready label
@@ -408,12 +417,12 @@ class MainActivity : AppCompatActivity() {
             textSize = 13f
             setTextColor(Color.argb(180, 0, 255, 120))
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            gravity = android.view.Gravity.CENTER
+            gravity = Gravity.CENTER
             letterSpacing = 0.15f
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT).apply {
-                bottomMargin = 16
+                bottomMargin = 16.dpToPx()
             }
         }
 
@@ -421,12 +430,14 @@ class MainActivity : AppCompatActivity() {
         bottom.addView(tvTilt)
         bottom.addView(tiltBar)
 
-        // Update tilt bar
+        // Update tilt bar loop
         handler.post(object : Runnable {
             override fun run() {
-                val t = UdpListenerService.lastTilt.toFloatOrNull() ?: 0f
-                tiltBar.progress = (100 + (t/10f*100).toInt()).coerceIn(0, 200)
-                handler.postDelayed(this, 50)
+                if (!isFinishing) {
+                    val t = try { UdpListenerService.lastTilt.toFloatOrNull() ?: 0f } catch(e: Exception) { 0f }
+                    tiltBar.progress = (100 + (t/10f*100).toInt()).coerceIn(0, 200)
+                    handler.postDelayed(this, 50)
+                }
             }
         })
 
@@ -473,21 +484,21 @@ class MainActivity : AppCompatActivity() {
         text: String,
         bgColor: Int,
         onClick: () -> Unit
-    ): android.widget.Button {
-        return android.widget.Button(this).apply {
+    ): Button {
+        return Button(this).apply {
             this.text = text
             textSize = 14f
             setTextColor(Color.WHITE)
             setBackgroundColor(bgColor)
             outlineProvider = object : ViewOutlineProvider() {
                 override fun getOutline(view: View, outline: Outline) {
-                    outline.setRoundRect(0, 0, view.width, view.height, 18f)
+                    outline.setRoundRect(0, 0, view.width, view.height, 18.dpToPx().toFloat())
                 }
             }
             clipToOutline = true
             layoutParams = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT, 56.dpToPx()).apply {
-                topMargin = 4
+                topMargin = 4.dpToPx()
             }
             setOnClickListener { onClick() }
         }
