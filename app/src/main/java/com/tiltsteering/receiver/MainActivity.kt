@@ -40,7 +40,7 @@ class SteeringWheelView @JvmOverloads constructor(
         color = Color.argb(60, 255, 255, 255)
         style = Paint.Style.STROKE
         strokeWidth = 8f
-        strokeCap = Paint Cap.ROUND
+        strokeCap = Paint.Cap.ROUND
     }
     private val paintDot = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
@@ -109,19 +109,15 @@ class MainActivity : AppCompatActivity() {
 
     private val tick = object : Runnable {
         override fun run() {
-            // Safe checks to prevent crashes if services aren't ready
             val pkt  = try { UdpListenerService.packetCount } catch(e: Exception) { 0 }
             val tilt = try { UdpListenerService.lastTilt.toFloatOrNull() ?: 0f } catch(e: Exception) { 0f }
             val serviceOn = try { MultiTouchTest.instance != null } catch(e: Exception) { false }
 
-            // Update IP
             tvIp.text = getIp()
 
-            // Enable start only if accessibility is on
             btnStart.isEnabled = serviceOn
             btnStart.alpha = if (serviceOn) 1f else 0.4f
 
-            // Auto switch to page 2 if packets received
             if (!onPage2 && pkt > 0) switchToPage2()
 
             if (onPage2) {
@@ -142,7 +138,6 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // Fullscreen landscape
         window.decorView.windowInsetsController?.hide(
             WindowInsets.Type.statusBars() or
             WindowInsets.Type.navigationBars())
@@ -172,7 +167,6 @@ class MainActivity : AppCompatActivity() {
         handler.post(tick)
     }
 
-    // ── PAGE 1 ───────────────────────────────────
     private fun buildPage1(): View {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -181,14 +175,12 @@ class MainActivity : AppCompatActivity() {
             setPadding(64, 48, 64, 48)
         }
 
-        // App icon - Robust loading
         val ivIcon = ImageView(this).apply {
-            // Try loading the copied icon, fallback to default if missing
             val iconResId = resources.getIdentifier("icon", "drawable", packageName)
             if (iconResId != 0) {
                 setImageResource(iconResId)
             } else {
-                setImageResource(android.R.drawable.ic_menu_send) // Fallback icon
+                setImageResource(android.R.drawable.ic_menu_send)
             }
             layoutParams = LinearLayout.LayoutParams(120, 120).apply {
                 gravity = Gravity.CENTER
@@ -197,7 +189,6 @@ class MainActivity : AppCompatActivity() {
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
 
-        // Title
         val tvTitle = TextView(this).apply {
             text = "MRB Controller"
             textSize = 26f
@@ -211,7 +202,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Subtitle
         val tvSub = TextView(this).apply {
             text = "Tilt Steering Receiver"
             textSize = 13f
@@ -224,7 +214,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // IP Card
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
@@ -276,13 +265,11 @@ class MainActivity : AppCompatActivity() {
         card.addView(tvIp)
         card.addView(tvHow)
 
-        // Accessibility button
         btnAccessibility = buildBtn("Open Accessibility Settings",
             Color.parseColor("#1C1C1E")) {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
         }
 
-        // Start button
         btnStart = buildBtn("Start Controller",
             Color.WHITE) {
             switchToPage2()
@@ -308,7 +295,6 @@ class MainActivity : AppCompatActivity() {
         root.addView(tvSub)
         root.addView(card)
         root.addView(btnAccessibility)
-        // Replaced Space with view with dimensions
         root.addView(View(this).apply {
             layoutParams = LinearLayout.LayoutParams(1, 12.dpToPx())
         })
@@ -318,20 +304,17 @@ class MainActivity : AppCompatActivity() {
         return root
     }
 
-    // ── PAGE 2 ───────────────────────────────────
     private fun buildPage2(): View {
         val root = FrameLayout(this).apply {
             setBackgroundColor(Color.parseColor("#0A0A0A"))
         }
 
-        // Steering wheel center
         wheelView = SteeringWheelView(this).apply {
             layoutParams = FrameLayout.LayoutParams(320.dpToPx(), 320.dpToPx()).apply {
                 gravity = Gravity.CENTER
             }
         }
 
-        // Top bar
         val topBar = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(24.dpToPx(), 20.dpToPx(), 24.dpToPx(), 20.dpToPx())
@@ -365,7 +348,6 @@ class MainActivity : AppCompatActivity() {
             textSize = 20f
             setTextColor(Color.argb(80, 255, 255, 255))
             setOnClickListener {
-                // Safe check for SettingsActivity
                 try {
                     startActivity(Intent(
                         this@MainActivity, Class.forName("${packageName}.SettingsActivity")))
@@ -379,7 +361,6 @@ class MainActivity : AppCompatActivity() {
         topBar.addView(tvPkt)
         topBar.addView(btnSet)
 
-        // Bottom tilt area
         val bottom = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
@@ -411,7 +392,6 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.MATCH_PARENT, 6.dpToPx())
         }
 
-        // Ready label
         val tvReady = TextView(this).apply {
             text = "READY TO RACE"
             textSize = 13f
@@ -430,7 +410,6 @@ class MainActivity : AppCompatActivity() {
         bottom.addView(tvTilt)
         bottom.addView(tiltBar)
 
-        // Update tilt bar loop
         handler.post(object : Runnable {
             override fun run() {
                 if (!isFinishing) {
@@ -472,7 +451,6 @@ class MainActivity : AppCompatActivity() {
                     }
                 }
             }
-            // Fallback wifi
             val wm = applicationContext.getSystemService(
                 Context.WIFI_SERVICE) as WifiManager
             Formatter.formatIpAddress(wm.connectionInfo.ipAddress)
