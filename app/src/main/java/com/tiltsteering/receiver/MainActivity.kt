@@ -316,7 +316,6 @@ class MainActivity : AppCompatActivity() {
 
         root.addView(ivIcon)
         root.addView(tvTitle)
-        root.addView(tvSub)
         root.addView(card)
         root.addView(buttonRow)
         root.addView(View(this).apply {
