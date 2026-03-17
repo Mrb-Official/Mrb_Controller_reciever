@@ -276,7 +276,7 @@ class MainActivity : AppCompatActivity() {
             marginEnd = 10.dpToPx()
         }
 
-        btnStart = buildBtn("Start Controller",
+        btnStart = buildBtn("Start Controller Host",
             Color.WHITE) {
             switchToPage2()
 
