@@ -182,7 +182,7 @@ class MainActivity : AppCompatActivity() {
             } else {
                 setImageResource(android.R.drawable.ic_menu_send)
             }
-            layoutParams = LinearLayout.LayoutParams(80.dpToPx, 80.dpToPx).apply {
+            layoutParams = LinearLayout.LayoutParams(80.dpToPx(), 80.dpToPx()).apply {
                 gravity = Gravity.CENTER
                 bottomMargin = 16.dpToPx()
             }
