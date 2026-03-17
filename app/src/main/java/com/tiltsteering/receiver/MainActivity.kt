@@ -182,15 +182,15 @@ class MainActivity : AppCompatActivity() {
             } else {
                 setImageResource(android.R.drawable.ic_menu_send)
             }
-            layoutParams = LinearLayout.LayoutParams(120, 120).apply {
+            layoutParams = LinearLayout.LayoutParams(80.dpToPx, 80.dpToPx).apply {
                 gravity = Gravity.CENTER
-                bottomMargin = 24
+                bottomMargin = 16.dpToPx()
             }
             scaleType = ImageView.ScaleType.FIT_CENTER
         }
 
         val tvTitle = TextView(this).apply {
-            text = "MRB Controller"
+            text = "MRB Controller Host"
             textSize = 26f
             setTextColor(Color.WHITE)
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
@@ -202,7 +202,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        val tvSub = TextView(this).apply {
+       /*  val tvSub = TextView(this).apply {
             text = "Tilt Steering Receiver"
             textSize = 13f
             setTextColor(Color.argb(140, 255, 255, 255))
@@ -212,7 +212,7 @@ class MainActivity : AppCompatActivity() {
                 LinearLayout.LayoutParams.WRAP_CONTENT).apply {
                 bottomMargin = 48
             }
-        }
+        }*/
 
         val card = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -233,7 +233,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val tvIpLabel = TextView(this).apply {
-            text = "RECEIVER IP"
+            text = "Your Pairing Code"
             textSize = 10f
             setTextColor(Color.argb(100, 255, 255, 255))
             gravity = Gravity.CENTER
@@ -255,7 +255,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         val tvHow = TextView(this).apply {
-            text = "Enter this IP in MRB Controller sender app"
+            text = "Enter this Code in MRB Controller app"
             textSize = 12f
             setTextColor(Color.argb(100, 255, 255, 255))
             gravity = Gravity.CENTER
@@ -265,18 +265,42 @@ class MainActivity : AppCompatActivity() {
         card.addView(tvIp)
         card.addView(tvHow)
 
-        btnAccessibility = buildBtn("Open Accessibility Settings",
+        
+
+        btnAccessibility = buildBtn("Enable Accessibility Service",
             Color.parseColor("#1C1C1E")) {
             startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+
+        }
+        btnAccessibility.layoutParams = LinearLayout.LayoutParams(0, 60.dpToPx(), 1f).apply{
+            marginEnd = 10.dpToPx()
         }
 
         btnStart = buildBtn("Start Controller",
             Color.WHITE) {
             switchToPage2()
+
+        }
+        btnStart.layoutParams = LinearLayout.LayoutParams(0, 60.dpToPx(), 1f).apply{
+            marginStart = 10.dpToPx()
         }
         btnStart.setTextColor(Color.BLACK)
         btnStart.isEnabled = false
         btnStart.alpha = 0.4f
+
+        //horizontal boxLinearLayout.HORIZONTAL
+
+        val buttonRow = LinearLayout(this)
+        buttonRow.orientation = LinearLayout.HORIZONTAL
+        buttonRow.layoutParams = LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.MATCH_PARENT, 
+        LinearLayout.LayoutParams.WRAP_CONTENT
+        )
+        buttonRow.weightSum = 2f
+        buttonRow.addView(btnAccessibility)
+        buttonRow.addView(btnStart)
+
+        //end conntainer btn
 
         val tvHint = TextView(this).apply {
             text = "Enable MRB Controller in Accessibility first"
@@ -294,11 +318,10 @@ class MainActivity : AppCompatActivity() {
         root.addView(tvTitle)
         root.addView(tvSub)
         root.addView(card)
-        root.addView(btnAccessibility)
+        root.addView(buttonRow)
         root.addView(View(this).apply {
             layoutParams = LinearLayout.LayoutParams(1, 12.dpToPx())
         })
-        root.addView(btnStart)
         root.addView(tvHint)
 
         return root
